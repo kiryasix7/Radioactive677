@@ -1,4 +1,4 @@
--- Radioactive | Expensive Style UI + Party Tab (with coord input)
+-- Radioactive | Expensive Style UI + Party Tab
 -- RSHIFT - меню
 
 local CoreGui = game:GetService("CoreGui")
@@ -33,9 +33,11 @@ local function RegisterThemeElement(element, type, isActiveOnly)
     table.insert(ThemeElements, {element = element, type = type or "bg", isActiveOnly = isActiveOnly or false})
 end
 
--- PERSISTENT STATE
-local FriendList = {}
-local PointsList = {}
+-- ==========================================================
+-- PERSISTENT STATE (Friends + Points)
+-- ==========================================================
+local FriendList = {}       -- { [name_lower] = originalName }
+local PointsList = {}       -- { [id] = {id=, name=, pos=Vector3} }
 local PointIdCounter = 0
 
 local function LoadData()
@@ -77,7 +79,9 @@ end
 
 LoadData()
 
+-- ==========================================================
 -- HUD PANEL
+-- ==========================================================
 local HUDScreen = Instance.new("ScreenGui")
 HUDScreen.Name = "RadioactiveHUD"
 HUDScreen.ResetOnSpawn = false
@@ -189,7 +193,9 @@ local function ApplyWatermarkState()
     end
 end
 
+-- ==========================================================
 -- AUX SCREEN
+-- ==========================================================
 local AuxScreen = Instance.new("ScreenGui")
 AuxScreen.Name = "RadioactiveAux"
 AuxScreen.ResetOnSpawn = false
@@ -244,7 +250,9 @@ TargetHPText.TextSize = 11
 TargetHPText.TextXAlignment = Enum.TextXAlignment.Left
 TargetHPText.Parent = TargetFrame
 
--- MINIMAP
+-- ==========================================================
+-- MINIMAP (1000 studs, rotating)
+-- ==========================================================
 local MINIMAP_RANGE = 1000
 local GRID_SPACING = 200
 
@@ -314,10 +322,12 @@ MiniMapPlayerDot.ZIndex = 5
 MiniMapPlayerDot.Parent = MiniMapArea
 local MPDC = Instance.new("UICorner") MPDC.CornerRadius = UDim.new(1, 0) MPDC.Parent = MiniMapPlayerDot
 
-local MiniMapDots = {}
-local MiniMapPointDots = {}
+local MiniMapDots = {}      -- player -> {frame, label}
+local MiniMapPointDots = {} -- pointId -> frame
 
+-- ==========================================================
 -- MENU
+-- ==========================================================
 local MenuScreen = Instance.new("ScreenGui")
 MenuScreen.Name = "RadioactiveMenu"
 MenuScreen.ResetOnSpawn = false
@@ -553,46 +563,6 @@ local function CreateInput(parent, placeholder)
     return F, T
 end
 
--- Row of 3 inputs (for X, Y, Z)
-local function CreateXYZRow(parent)
-    local F = Instance.new("Frame")
-    F.Size = UDim2.new(1, 0, 0, 30)
-    F.BackgroundTransparency = 1
-    F.Parent = parent
-    local lay = Instance.new("UIListLayout")
-    lay.FillDirection = Enum.FillDirection.Horizontal
-    lay.Padding = UDim.new(0, 6)
-    lay.Parent = F
-
-    local function makeBox(ph)
-        local B = Instance.new("Frame")
-        B.Size = UDim2.new(0.333, -4, 1, 0)
-        B.BackgroundColor3 = Config.ElementBg
-        B.Parent = F
-        local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 6) c.Parent = B
-        local s = Instance.new("UIStroke") s.Color = Color3.fromRGB(45,45,45) s.Thickness = 1 s.Parent = B
-        local T = Instance.new("TextBox")
-        T.Size = UDim2.new(1, -8, 1, 0)
-        T.Position = UDim2.new(0, 4, 0, 0)
-        T.BackgroundTransparency = 1
-        T.Text = ""
-        T.PlaceholderText = ph
-        T.PlaceholderColor3 = Config.TextDim
-        T.TextColor3 = Config.TextColor
-        T.Font = Config.Font
-        T.TextSize = 12
-        T.TextXAlignment = Enum.TextXAlignment.Center
-        T.ClearTextOnFocus = false
-        T.Parent = B
-        return T
-    end
-
-    local xIn = makeBox("X")
-    local yIn = makeBox("Y")
-    local zIn = makeBox("Z")
-    return F, xIn, yIn, zIn
-end
-
 for i, tabName in ipairs(Tabs) do
     local TabBtn = Instance.new("TextButton")
     TabBtn.Size = UDim2.new(1, 0, 0, 30)
@@ -663,7 +633,9 @@ CreateToggle(TargetHUDSection, "Target HUD Enabled", true, function(s) TargetFra
 local MiniMapSection = CreateSection(HUDContent, "MiniMap")
 CreateToggle(MiniMapSection, "MiniMap Enabled", true, function(s) MiniMapFrame.Visible = s end)
 
--- COMBAT
+-- ==========================================================
+-- COMBAT (with friend skip)
+-- ==========================================================
 local CombatMain = CreateSection(CombatContent, "Aimbot")
 getgenv().AimbotTarget = "Head"
 CreateToggle(CombatMain, "Aimbot Enabled", false, function(state)
@@ -739,7 +711,9 @@ CreateToggle(CombatHitbox, "Hitbox Enabled", false, function(state)
 end)
 CreateSlider(CombatHitbox, "Hitbox Size", 1, 15, 5, function(v) getgenv().HitboxSize = v end)
 
+-- ==========================================================
 -- MOVEMENT
+-- ==========================================================
 local MovementSpeed = CreateSection(MovementContent, "Speed")
 CreateToggle(MovementSpeed, "Speed Enabled", false, function(state)
     getgenv().SpeedEnabled = state
@@ -829,7 +803,9 @@ CreateToggle(MovementSprint, "Sprint (Hold Shift)", false, function(state)
     end
 end)
 
+-- ==========================================================
 -- PLAYER
+-- ==========================================================
 local PlayerInfinite = CreateSection(PlayerContent, "Infinite Jump")
 CreateToggle(PlayerInfinite, "Infinite Jump", false, function(state)
     getgenv().InfJumpEnabled = state
@@ -881,7 +857,9 @@ CreateButton(PlayerReset, "Reset Character", function()
     if c and c:FindFirstChild("Humanoid") then c.Humanoid.Health = 0 end
 end)
 
--- RENDER
+-- ==========================================================
+-- RENDER (with friend green ESP)
+-- ==========================================================
 local RenderFullbright = CreateSection(RenderContent, "Fullbright")
 CreateToggle(RenderFullbright, "Fullbright Enabled", false, function(state)
     getgenv().FullbrightEnabled = state
@@ -957,7 +935,9 @@ CreateToggle(RenderNoFog, "No Fog", false, function(state)
     end
 end)
 
+-- ==========================================================
 -- MISC
+-- ==========================================================
 local MiscServerHop = CreateSection(MiscContent, "Server Hop")
 CreateButton(MiscServerHop, "Server Hop", function()
     local TeleportService = game:GetService("TeleportService")
@@ -995,11 +975,13 @@ end)
 -- ==========================================================
 -- PARTY TAB
 -- ==========================================================
-_G.RadioactiveIRC = _G.RadioactiveIRC or {}
-_G.RadioactiveUsers = _G.RadioactiveUsers or {}
+
+-- ---------- Global shared state for same-server IRC + Globals ----------
+_G.RadioactiveIRC = _G.RadioactiveIRC or {}      -- { {user=, msg=, t=}, ... }
+_G.RadioactiveUsers = _G.RadioactiveUsers or {}  -- { [LocalPlayer] = true }
 _G.RadioactiveUsers[LocalPlayer] = true
 
--- Add Friend
+-- ---------- Add Friend ----------
 local AddFriendSection = CreateSection(PartyContent, "Add Friend")
 local _, AddFriendInput = CreateInput(AddFriendSection, "Enter player name...")
 CreateButton(AddFriendSection, "Add Friend", function()
@@ -1012,8 +994,9 @@ CreateButton(AddFriendSection, "Add Friend", function()
     end
 end)
 
--- Friend List
+-- ---------- Friend List ----------
 local FriendListSection = CreateSection(PartyContent, "Friend List")
+
 local function RefreshFriendList()
     for _, c in ipairs(FriendListSection:GetChildren()) do
         if c:IsA("Frame") and c.Name == "FriendRow" then c:Destroy() end
@@ -1024,6 +1007,7 @@ local function RefreshFriendList()
         row.Size = UDim2.new(1, 0, 0, 24)
         row.BackgroundTransparency = 1
         row.Parent = FriendListSection
+
         local lbl = Instance.new("TextLabel")
         lbl.Size = UDim2.new(0.7, 0, 1, 0)
         lbl.BackgroundTransparency = 1
@@ -1033,6 +1017,7 @@ local function RefreshFriendList()
         lbl.TextSize = 13
         lbl.TextXAlignment = Enum.TextXAlignment.Left
         lbl.Parent = row
+
         local del = Instance.new("TextButton")
         del.Size = UDim2.new(0, 24, 0, 20)
         del.Position = UDim2.new(1, -24, 0.5, -10)
@@ -1044,6 +1029,7 @@ local function RefreshFriendList()
         del.AutoButtonColor = false
         del.Parent = row
         local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(0, 4) dc.Parent = del
+
         del.MouseButton1Click:Connect(function()
             FriendList[lname] = nil
             SaveFriends()
@@ -1053,7 +1039,7 @@ local function RefreshFriendList()
 end
 RefreshFriendList()
 
--- Set Point (два способа: на позиции игрока + по координатам)
+-- ---------- Set Point + Points List ----------
 local SetPointSection = CreateSection(PartyContent, "Set Point")
 
 local WorldFolder = Instance.new("Folder")
@@ -1121,7 +1107,6 @@ local function RefreshWorldMarkers()
     end
 end
 
--- Способ 1: точка на текущей позиции игрока
 CreateButton(SetPointSection, "Create Point at My Position", function()
     local c = LocalPlayer.Character
     if not c or not c:FindFirstChild("HumanoidRootPart") then return end
@@ -1136,43 +1121,6 @@ CreateButton(SetPointSection, "Create Point at My Position", function()
     RefreshPointsList()
 end)
 
--- Способ 2: точка по координатам X, Y, Z
-local CoordLabel2 = Instance.new("TextLabel")
-CoordLabel2.Size = UDim2.new(1, 0, 0, 16)
-CoordLabel2.BackgroundTransparency = 1
-CoordLabel2.Text = "Or create by coordinates:"
-CoordLabel2.TextColor3 = Config.TextDim
-CoordLabel2.Font = Config.Font
-CoordLabel2.TextSize = 12
-CoordLabel2.TextXAlignment = Enum.TextXAlignment.Left
-CoordLabel2.Parent = SetPointSection
-
-local _, CoordXInput, CoordYInput, CoordZInput = CreateXYZRow(SetPointSection)
-
-CreateButton(SetPointSection, "Create Point by Coordinates", function()
-    local x = tonumber(CoordXInput.Text)
-    local y = tonumber(CoordYInput.Text)
-    local z = tonumber(CoordZInput.Text)
-    if x and y and z then
-        PointIdCounter = PointIdCounter + 1
-        PointsList[PointIdCounter] = {
-            id = PointIdCounter,
-            name = "Point " .. PointIdCounter,
-            pos = Vector3.new(x, y, z)
-        }
-        SavePoints()
-        RefreshWorldMarkers()
-        RefreshPointsList()
-        CoordXInput.Text = ""
-        CoordYInput.Text = ""
-        CoordZInput.Text = ""
-        print("[Radioactive] Created point at " .. x .. ", " .. y .. ", " .. z)
-    else
-        print("[Radioactive] Invalid coordinates! Enter numbers.")
-    end
-end)
-
--- Points List
 local PointsListSection = CreateSection(PartyContent, "Points List")
 
 function RefreshPointsList()
@@ -1202,17 +1150,6 @@ function RefreshPointsList()
             RefreshWorldMarkers()
         end)
 
-        local coordsLbl = Instance.new("TextLabel")
-        coordsLbl.Size = UDim2.new(0.3, -32, 1, 0)
-        coordsLbl.Position = UDim2.new(0.6, 0, 0, 0)
-        coordsLbl.BackgroundTransparency = 1
-        coordsLbl.Text = math.floor(point.pos.X) .. "," .. math.floor(point.pos.Y) .. "," .. math.floor(point.pos.Z)
-        coordsLbl.TextColor3 = Config.TextDim
-        coordsLbl.Font = Config.Font
-        coordsLbl.TextSize = 10
-        coordsLbl.TextXAlignment = Enum.TextXAlignment.Center
-        coordsLbl.Parent = row
-
         local del = Instance.new("TextButton")
         del.Size = UDim2.new(0, 24, 0, 22)
         del.Position = UDim2.new(1, -28, 0.5, -11)
@@ -1223,7 +1160,7 @@ function RefreshPointsList()
         del.TextSize = 12
         del.AutoButtonColor = false
         del.Parent = row
-        local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(0, 4) dc.Parent = del
+        local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(0, 4) dc.Parent = dc
 
         del.MouseButton1Click:Connect(function()
             PointsList[id] = nil
@@ -1237,7 +1174,7 @@ end
 RefreshWorldMarkers()
 RefreshPointsList()
 
--- Globals
+-- ---------- Globals (R above script users, same-server only) ----------
 local GlobalsSection = CreateSection(PartyContent, "Globals")
 CreateToggle(GlobalsSection, "Globals (R above script users)", false, function(state)
     getgenv().GlobalsEnabled = state
@@ -1245,6 +1182,7 @@ CreateToggle(GlobalsSection, "Globals (R above script users)", false, function(s
         getgenv().GlobalsConn = RunService.RenderStepped:Connect(function()
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+                    -- same-server detection via _G
                     if _G.RadioactiveUsers[p] then
                         local head = p.Character.Head
                         local existing = head:FindFirstChild("RadioactiveR")
@@ -1281,7 +1219,7 @@ CreateToggle(GlobalsSection, "Globals (R above script users)", false, function(s
     end
 end)
 
--- IRC
+-- ---------- IRC (Same-server chat via _G) ----------
 local IRCSection = CreateSection(PartyContent, "IRC (Same-Server Chat)")
 
 local IRCDisplay = Instance.new("ScrollingFrame")
@@ -1336,7 +1274,9 @@ CreateButton(IRCSection, "Send", function()
     end
 end)
 
+-- ==========================================================
 -- THEME
+-- ==========================================================
 local ThemeSection = CreateSection(ThemeContent, "Accent Color (RGB)")
 local function UpdateTheme(newColor)
     Config.AccentColor = newColor
@@ -1362,7 +1302,9 @@ CreateSlider(ThemeSection, "Red", 0, 255, 0, function(v) UpdateTheme(Color3.from
 CreateSlider(ThemeSection, "Green", 0, 255, 170, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), v, math.floor(Config.AccentColor.B*255))) end)
 CreateSlider(ThemeSection, "Blue", 0, 255, 255, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), math.floor(Config.AccentColor.G*255), v)) end)
 
+-- ==========================================================
 -- CONFIGURATIONS
+-- ==========================================================
 local ConfigSection = CreateSection(ConfigContent, "Config Management")
 CreateButton(ConfigSection, "Save Config", function()
     local data = {}
@@ -1384,7 +1326,9 @@ CreateButton(ConfigSection, "Load Config", function()
     end
 end)
 
+-- ==========================================================
 -- DRAGGABLE
+-- ==========================================================
 local function makeDraggable(frame, dragArea)
     local dragging, dragInput, dragStart, startPos
     dragArea.InputBegan:Connect(function(input)
@@ -1413,7 +1357,9 @@ makeDraggable(Menu_MainFrame, Header)
 makeDraggable(TargetFrame, TargetName)
 makeDraggable(MiniMapFrame, MiniMapTitle)
 
+-- ==========================================================
 -- HUD UPDATE
+-- ==========================================================
 local frames = 0
 local lastTime = tick()
 local currentFps = 0
@@ -1443,7 +1389,9 @@ RunService.RenderStepped:Connect(function()
     SpeedLabel.Text = speed .. " sps"
 end)
 
+-- ==========================================================
 -- TARGET HUD LOOP
+-- ==========================================================
 local targetAccum = 0
 RunService.RenderStepped:Connect(function(dt)
     if not TargetFrame.Visible then return end
@@ -1476,7 +1424,9 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- MINIMAP LOOP
+-- ==========================================================
+-- MINIMAP LOOP (with friend green + point white)
+-- ==========================================================
 local minimapAccum = 0
 RunService.RenderStepped:Connect(function(dt)
     if not MiniMapFrame.Visible then return end
@@ -1577,6 +1527,7 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
+    -- Points on minimap (white dots)
     local seenPoints = {}
     for id, point in pairs(PointsList) do
         seenPoints[id] = true
@@ -1604,7 +1555,9 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
+-- ==========================================================
 -- WORLD POINT DISTANCE UPDATE
+-- ==========================================================
 RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
@@ -1618,7 +1571,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- ==========================================================
 -- RSHIFT
+-- ==========================================================
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.RightShift then
@@ -1626,4 +1581,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("Radioactive загружен! RSHIFT - меню.")
+print("Radioactive загружен! RSHIFT - меню. Party tab добавлен.")
