@@ -1,4 +1,4 @@
--- Radioactive | Expensive Style UI + Party + Config (Copy/Load via Clipboard)
+-- Radioactive | Expensive Style UI + Party Tab (with coord input)
 -- RSHIFT - меню
 
 local CoreGui = game:GetService("CoreGui")
@@ -553,6 +553,7 @@ local function CreateInput(parent, placeholder)
     return F, T
 end
 
+-- Row of 3 inputs (for X, Y, Z)
 local function CreateXYZRow(parent)
     local F = Instance.new("Frame")
     F.Size = UDim2.new(1, 0, 0, 30)
@@ -1013,9 +1014,7 @@ end)
 
 -- Friend List
 local FriendListSection = CreateSection(PartyContent, "Friend List")
-
-local RefreshFriendList
-RefreshFriendList = function()
+local function RefreshFriendList()
     for _, c in ipairs(FriendListSection:GetChildren()) do
         if c:IsA("Frame") and c.Name == "FriendRow" then c:Destroy() end
     end
@@ -1054,7 +1053,7 @@ RefreshFriendList = function()
 end
 RefreshFriendList()
 
--- Set Point
+-- Set Point (два способа: на позиции игрока + по координатам)
 local SetPointSection = CreateSection(PartyContent, "Set Point")
 
 local WorldFolder = Instance.new("Folder")
@@ -1105,8 +1104,7 @@ end
 
 local WorldMarkers = {}
 
-local RefreshWorldMarkers
-RefreshWorldMarkers = function()
+local function RefreshWorldMarkers()
     for id, m in pairs(WorldMarkers) do
         if not PointsList[id] then
             m.part:Destroy()
@@ -1123,8 +1121,61 @@ RefreshWorldMarkers = function()
     end
 end
 
-local RefreshPointsList
-RefreshPointsList = function()
+-- Способ 1: точка на текущей позиции игрока
+CreateButton(SetPointSection, "Create Point at My Position", function()
+    local c = LocalPlayer.Character
+    if not c or not c:FindFirstChild("HumanoidRootPart") then return end
+    PointIdCounter = PointIdCounter + 1
+    PointsList[PointIdCounter] = {
+        id = PointIdCounter,
+        name = "Point " .. PointIdCounter,
+        pos = c.HumanoidRootPart.Position
+    }
+    SavePoints()
+    RefreshWorldMarkers()
+    RefreshPointsList()
+end)
+
+-- Способ 2: точка по координатам X, Y, Z
+local CoordLabel2 = Instance.new("TextLabel")
+CoordLabel2.Size = UDim2.new(1, 0, 0, 16)
+CoordLabel2.BackgroundTransparency = 1
+CoordLabel2.Text = "Or create by coordinates:"
+CoordLabel2.TextColor3 = Config.TextDim
+CoordLabel2.Font = Config.Font
+CoordLabel2.TextSize = 12
+CoordLabel2.TextXAlignment = Enum.TextXAlignment.Left
+CoordLabel2.Parent = SetPointSection
+
+local _, CoordXInput, CoordYInput, CoordZInput = CreateXYZRow(SetPointSection)
+
+CreateButton(SetPointSection, "Create Point by Coordinates", function()
+    local x = tonumber(CoordXInput.Text)
+    local y = tonumber(CoordYInput.Text)
+    local z = tonumber(CoordZInput.Text)
+    if x and y and z then
+        PointIdCounter = PointIdCounter + 1
+        PointsList[PointIdCounter] = {
+            id = PointIdCounter,
+            name = "Point " .. PointIdCounter,
+            pos = Vector3.new(x, y, z)
+        }
+        SavePoints()
+        RefreshWorldMarkers()
+        RefreshPointsList()
+        CoordXInput.Text = ""
+        CoordYInput.Text = ""
+        CoordZInput.Text = ""
+        print("[Radioactive] Created point at " .. x .. ", " .. y .. ", " .. z)
+    else
+        print("[Radioactive] Invalid coordinates! Enter numbers.")
+    end
+end)
+
+-- Points List
+local PointsListSection = CreateSection(PartyContent, "Points List")
+
+function RefreshPointsList()
     for _, c in ipairs(PointsListSection:GetChildren()) do
         if c:IsA("Frame") and c.Name == "PointRow" then c:Destroy() end
     end
@@ -1183,59 +1234,6 @@ RefreshPointsList = function()
     end
 end
 
--- Способ 1: точка на текущей позиции игрока
-CreateButton(SetPointSection, "Create Point at My Position", function()
-    local c = LocalPlayer.Character
-    if not c or not c:FindFirstChild("HumanoidRootPart") then return end
-    PointIdCounter = PointIdCounter + 1
-    PointsList[PointIdCounter] = {
-        id = PointIdCounter,
-        name = "Point " .. PointIdCounter,
-        pos = c.HumanoidRootPart.Position
-    }
-    SavePoints()
-    RefreshWorldMarkers()
-    RefreshPointsList()
-end)
-
--- Способ 2: точка по координатам X, Y, Z
-local CoordLabel2 = Instance.new("TextLabel")
-CoordLabel2.Size = UDim2.new(1, 0, 0, 16)
-CoordLabel2.BackgroundTransparency = 1
-CoordLabel2.Text = "Or create by coordinates:"
-CoordLabel2.TextColor3 = Config.TextDim
-CoordLabel2.Font = Config.Font
-CoordLabel2.TextSize = 12
-CoordLabel2.TextXAlignment = Enum.TextXAlignment.Left
-CoordLabel2.Parent = SetPointSection
-
-local _, CoordXInput, CoordYInput, CoordZInput = CreateXYZRow(SetPointSection)
-
-CreateButton(SetPointSection, "Create Point by Coordinates", function()
-    local x = tonumber(CoordXInput.Text)
-    local y = tonumber(CoordYInput.Text)
-    local z = tonumber(CoordZInput.Text)
-    if x and y and z then
-        PointIdCounter = PointIdCounter + 1
-        PointsList[PointIdCounter] = {
-            id = PointIdCounter,
-            name = "Point " .. PointIdCounter,
-            pos = Vector3.new(x, y, z)
-        }
-        SavePoints()
-        RefreshWorldMarkers()
-        RefreshPointsList()
-        CoordXInput.Text = ""
-        CoordYInput.Text = ""
-        CoordZInput.Text = ""
-        print("[Radioactive] Created point at " .. x .. ", " .. y .. ", " .. z)
-    else
-        print("[Radioactive] Invalid coordinates! Enter numbers.")
-    end
-end)
-
--- Points List
-local PointsListSection = CreateSection(PartyContent, "Points List")
 RefreshWorldMarkers()
 RefreshPointsList()
 
@@ -1364,141 +1362,26 @@ CreateSlider(ThemeSection, "Red", 0, 255, 0, function(v) UpdateTheme(Color3.from
 CreateSlider(ThemeSection, "Green", 0, 255, 170, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), v, math.floor(Config.AccentColor.B*255))) end)
 CreateSlider(ThemeSection, "Blue", 0, 255, 255, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), math.floor(Config.AccentColor.G*255), v)) end)
 
--- ==========================================================
--- CONFIGURATIONS (Copy/Load via Clipboard)
--- ==========================================================
+-- CONFIGURATIONS
 local ConfigSection = CreateSection(ConfigContent, "Config Management")
-
-local CONFIG_KEYS = {
-    "AimbotEnabled", "AimbotFOV", "AimbotTarget", "TeamCheck", "WallCheck",
-    "HitboxEnabled", "HitboxSize",
-    "SpeedEnabled", "WalkSpeed",
-    "FlyEnabled", "FlySpeed",
-    "NoclipEnabled",
-    "SprintEnabled",
-    "InfJumpEnabled",
-    "AntiAFKEnabled",
-    "GodModeEnabled",
-    "FullbrightEnabled",
-    "ESPEnabled",
-    "NoFogEnabled",
-    "FPSBoostEnabled",
-    "GlobalsEnabled"
-}
-
-local function BuildConfigString()
-    local cfg = {
-        version = 1,
-        timestamp = os.time(),
-        features = {},
-        theme = {
-            r = math.floor(Config.AccentColor.R * 255),
-            g = math.floor(Config.AccentColor.G * 255),
-            b = math.floor(Config.AccentColor.B * 255)
-        },
-        watermark = WatermarkState,
-        friends = FriendList,
-        points = {}
-    }
-    for _, k in ipairs(CONFIG_KEYS) do
-        local v = getgenv()[k]
-        if type(v) == "boolean" then
-            if v then cfg.features[k] = true end
-        elseif type(v) == "number" or type(v) == "string" then
-            cfg.features[k] = v
-        end
+CreateButton(ConfigSection, "Save Config", function()
+    local data = {}
+    for k, v in pairs(getgenv()) do
+        if type(v) == "boolean" or type(v) == "number" or type(v) == "string" then data[k] = v end
     end
-    for _, p in pairs(PointsList) do
-        table.insert(cfg.points, {name = p.name, x = p.pos.X, y = p.pos.Y, z = p.pos.Z})
-    end
-    return HttpService:JSONEncode(cfg)
-end
-
-CreateButton(ConfigSection, "Copy Config to Clipboard", function()
-    local s = BuildConfigString()
-    pcall(function() setclipboard(s) end)
-    print("[Radioactive] Config copied to clipboard! (" .. #s .. " chars)")
+    pcall(function()
+        writefile("RadioactiveConfig.json", HttpService:JSONEncode(data))
+        print("Config saved!")
+    end)
 end)
-
-local LoadBoxFrame = Instance.new("Frame")
-LoadBoxFrame.Size = UDim2.new(1, 0, 0, 100)
-LoadBoxFrame.BackgroundColor3 = Config.ElementBg
-LoadBoxFrame.Parent = ConfigSection
-local lbc = Instance.new("UICorner") lbc.CornerRadius = UDim.new(0, 6) lbc.Parent = LoadBoxFrame
-local lbs = Instance.new("UIStroke") lbs.Color = Color3.fromRGB(45,45,45) lbs.Thickness = 1 lbs.Parent = LoadBoxFrame
-local lbs_pad = Instance.new("UIPadding")
-lbs_pad.PaddingLeft = UDim.new(0, 6)
-lbs_pad.PaddingRight = UDim.new(0, 6)
-lbs_pad.PaddingTop = UDim.new(0, 4)
-lbs_pad.PaddingBottom = UDim.new(0, 4)
-lbs_pad.Parent = LoadBoxFrame
-
-local LoadBox = Instance.new("TextBox")
-LoadBox.Size = UDim2.new(1, 0, 1, 0)
-LoadBox.BackgroundTransparency = 1
-LoadBox.Text = ""
-LoadBox.PlaceholderText = "Paste config here..."
-LoadBox.PlaceholderColor3 = Config.TextDim
-LoadBox.TextColor3 = Config.TextColor
-LoadBox.Font = Config.Font
-LoadBox.TextSize = 11
-LoadBox.TextXAlignment = Enum.TextXAlignment.Left
-LoadBox.TextYAlignment = Enum.TextYAlignment.Top
-LoadBox.TextWrapped = true
-LoadBox.MultiLine = true
-LoadBox.ClearTextOnFocus = false
-LoadBox.Parent = LoadBoxFrame
-
-CreateButton(ConfigSection, "Load Config from Text", function()
-    local txt = LoadBox.Text
-    if not txt or txt == "" then
-        print("[Radioactive] Config is empty!")
-        return
+CreateButton(ConfigSection, "Load Config", function()
+    if isfile("RadioactiveConfig.json") then
+        local data = HttpService:JSONDecode(readfile("RadioactiveConfig.json"))
+        for k, v in pairs(data) do getgenv()[k] = v end
+        print("Config loaded!")
+    else
+        print("No config found!")
     end
-    local ok, cfg = pcall(function() return HttpService:JSONDecode(txt) end)
-    if not ok or type(cfg) ~= "table" then
-        print("[Radioactive] Invalid config format!")
-        return
-    end
-    if cfg.features then
-        for k, v in pairs(cfg.features) do
-            getgenv()[k] = v
-        end
-    end
-    if cfg.theme then
-        local nc = Color3.fromRGB(cfg.theme.r or 0, cfg.theme.g or 170, cfg.theme.b or 255)
-        UpdateTheme(nc)
-    end
-    if cfg.watermark then
-        for k, v in pairs(cfg.watermark) do
-            WatermarkState[k] = v
-        end
-        ApplyWatermarkState()
-    end
-    if cfg.friends then
-        FriendList = cfg.friends
-        SaveFriends()
-        RefreshFriendList()
-    end
-    if cfg.points then
-        for _, m in pairs(WorldMarkers) do m.part:Destroy() end
-        WorldMarkers = {}
-        for _, df in pairs(MiniMapPointDots) do df:Destroy() end
-        MiniMapPointDots = {}
-        PointsList = {}
-        for _, p in ipairs(cfg.points) do
-            PointIdCounter = PointIdCounter + 1
-            PointsList[PointIdCounter] = {
-                id = PointIdCounter,
-                name = p.name,
-                pos = Vector3.new(p.x, p.y, p.z)
-            }
-        end
-        SavePoints()
-        RefreshWorldMarkers()
-        RefreshPointsList()
-    end
-    print("[Radioactive] Config loaded! Rejoin or re-toggle features to fully apply.")
 end)
 
 -- DRAGGABLE
