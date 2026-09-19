@@ -1,4 +1,4 @@
--- Radioactive | Expensive Style UI + Party + Chat Relay
+-- Radioactive | Expensive Style UI
 -- RSHIFT скрывает/показывает меню.
 
 local CoreGui = game:GetService("CoreGui")
@@ -8,7 +8,6 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Stats = game:GetService("Stats")
 local HttpService = game:GetService("HttpService")
-local TextChatService = game:GetService("TextChatService")
 local LocalPlayer = Players.LocalPlayer
 
 local parentGui = (gethui and gethui()) or CoreGui
@@ -365,7 +364,7 @@ ContentArea.Position = UDim2.new(0, 180, 0, 40)
 ContentArea.BackgroundTransparency = 1
 ContentArea.Parent = Menu_MainFrame
 
-local Tabs = {"HUD", "Combat", "Movement", "Player", "Render", "Misc", "Party", "Theme", "Configurations"}
+local Tabs = {"HUD", "Combat", "Movement", "Player", "Render", "Misc", "Friends", "Points", "Theme", "Configurations"}
 local TabButtons = {}
 local TabContents = {}
 local TabIndicators = {}
@@ -633,9 +632,10 @@ local MovementContent = TabContents[3]
 local PlayerContent = TabContents[4]
 local RenderContent = TabContents[5]
 local MiscContent = TabContents[6]
-local PartyContent = TabContents[7]
-local ThemeContent = TabContents[8]
-local ConfigContent = TabContents[9]
+local FriendsContent = TabContents[7]
+local PointsContent = TabContents[8]
+local ThemeContent = TabContents[9]
+local ConfigContent = TabContents[10]
 
 -- HUD TAB
 local WMSection = CreateSection(HUDContent, "Watermark (Top HUD)")
@@ -738,7 +738,6 @@ CreateToggle(MovementSpeed, "Speed Enabled", false, function(state)
         local c = LocalPlayer.Character
         if c and c:FindFirstChild("Humanoid") then
             getgenv().SpeedOriginal = c.Humanoid.WalkSpeed
-            print("[Radioactive] Original speed saved: " .. tostring(c.Humanoid.WalkSpeed))
         end
         getgenv().SpeedConnection = RunService.Heartbeat:Connect(function()
             local c2 = LocalPlayer.Character
@@ -751,10 +750,7 @@ CreateToggle(MovementSpeed, "Speed Enabled", false, function(state)
         local c = LocalPlayer.Character
         if c and c:FindFirstChild("Humanoid") then
             local original = getgenv().SpeedOriginal
-            if original then
-                c.Humanoid.WalkSpeed = original
-                print("[Radioactive] Speed restored to: " .. tostring(original))
-            end
+            if original then c.Humanoid.WalkSpeed = original end
         end
     end
 end)
@@ -986,18 +982,13 @@ CreateToggle(MiscFPSBoost, "FPS Boost", false, function(state)
 end)
 
 -- ==========================================================
--- PARTY TAB
+-- FRIENDS TAB
 -- ==========================================================
-local RefreshFriendList, RefreshWorldMarkers, RefreshPointsList
-local RemoteWorldMarkers = {}
-local RemoteMiniMapDots = {}
-getgenv().SyncPointsEnabled = false
-getgenv().RadioactiveDetectedUsers = getgenv().RadioactiveDetectedUsers or {}
+local RefreshFriendList
 
--- Add Friend
-local AddFriendSection = CreateSection(PartyContent, "Add Friend")
+local AddFriendSection = CreateSection(FriendsContent, "Add Friend")
 local _, AddFriendInput = CreateInput(AddFriendSection, "Enter player name...")
-local FriendListSection = CreateSection(PartyContent, "Friend List")
+local FriendListSection = CreateSection(FriendsContent, "Friend List")
 
 RefreshFriendList = function()
     for _, c in ipairs(FriendListSection:GetChildren()) do
@@ -1052,9 +1043,13 @@ end)
 
 RefreshFriendList()
 
--- Set Point
-local SetPointSection = CreateSection(PartyContent, "Set Point")
-local PointsListSection = CreateSection(PartyContent, "Points List")
+-- ==========================================================
+-- POINTS TAB
+-- ==========================================================
+local RefreshWorldMarkers, RefreshPointsList
+
+local SetPointSection = CreateSection(PointsContent, "Set Point")
+local PointsListSection = CreateSection(PointsContent, "Points List")
 
 local WorldFolder = Instance.new("Folder")
 WorldFolder.Name = "RadioactivePoints"
@@ -1214,282 +1209,6 @@ RefreshWorldMarkers()
 RefreshPointsList()
 
 -- ==========================================================
--- IRC + GLOBALS (Chat Relay)
--- ==========================================================
-local IRC_TAG = "[RADIO]"
-local GLOBALS_TAG = "[RADGLOB]"
-local PING_TAG = "[RADPING]"
-
-local function SendTaggedMessage(tag, msg)
-    local channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-    if channel then
-        pcall(function() channel:SendAsync(tag .. msg) end)
-    else
-        pcall(function()
-            local event = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-            if event then event.SayMessageRequest:FireServer(tag .. msg, "All") end
-        end)
-    end
-end
-
-local IRCSection = CreateSection(PartyContent, "IRC (Same-Server Chat)")
-local IRCDisplay = Instance.new("ScrollingFrame")
-IRCDisplay.Size = UDim2.new(1, 0, 0, 140)
-IRCDisplay.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-IRCDisplay.BorderSizePixel = 0
-IRCDisplay.ScrollBarThickness = 4
-IRCDisplay.ScrollBarImageColor3 = Config.AccentColor
-IRCDisplay.CanvasSize = UDim2.new(0, 0, 0, 0)
-IRCDisplay.AutomaticCanvasSize = Enum.AutomaticSize.Y
-IRCDisplay.Parent = IRCSection
-local irc_c = Instance.new("UICorner") irc_c.CornerRadius = UDim.new(0, 6) irc_c.Parent = IRCDisplay
-local irc_s = Instance.new("UIStroke") irc_s.Color = Color3.fromRGB(45,45,45) irc_s.Thickness = 1 irc_s.Parent = IRCDisplay
-local irc_pad = Instance.new("UIPadding") irc_pad.PaddingLeft = UDim.new(0, 6) irc_pad.PaddingRight = UDim.new(0, 6) irc_pad.PaddingTop = UDim.new(0, 4) irc_pad.Parent = IRCDisplay
-local irc_layout = Instance.new("UIListLayout") irc_layout.SortOrder = Enum.SortOrder.LayoutOrder irc_layout.Padding = UDim.new(0, 2) irc_layout.Parent = IRCDisplay
-
-local function AddIRCMessage(user, msg, isLocal)
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.new(1, 0, 0, 16)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = (isLocal and "[You] " or "[" .. user .. "] ") .. msg
-    lbl.TextColor3 = isLocal and Config.AccentColor or Config.TextColor
-    lbl.Font = Config.Font
-    lbl.TextSize = 12
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-    lbl.TextWrapped = true
-    lbl.AutomaticSize = Enum.AutomaticSize.Y
-    lbl.LayoutOrder = tick() * 1000
-    lbl.Parent = IRCDisplay
-    task.defer(function()
-        IRCDisplay.CanvasPosition = Vector2.new(0, math.max(0, IRCDisplay.AbsoluteCanvasSize.Y - IRCDisplay.AbsoluteSize.Y))
-    end)
-end
-
--- Перехват сообщений
-if TextChatService.MessageReceived then
-    TextChatService.MessageReceived:Connect(function(message)
-        local text = message.Text or ""
-        local sender = message.TextSource and message.TextSource.Name or "Unknown"
-        if sender == LocalPlayer.Name then return end
-        if text:sub(1, #IRC_TAG) == IRC_TAG then
-            AddIRCMessage(sender, text:sub(#IRC_TAG + 1), false)
-        elseif text:sub(1, #GLOBALS_TAG) == GLOBALS_TAG or text:sub(1, #PING_TAG) == PING_TAG then
-            local plr = Players:FindFirstChild(sender)
-            if plr then getgenv().RadioactiveDetectedUsers[plr] = tick() end
-        end
-    end)
-end
-
--- Legacy chat fallback
-pcall(function()
-    local event = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-    if event and event.OnMessageDoneFiltering then
-        event.OnMessageDoneFiltering.OnClientEvent:Connect(function(data)
-            local sender = data.FromSpeaker or "Unknown"
-            local msg = data.Message or ""
-            if sender == LocalPlayer.Name then return end
-            if msg:sub(1, #IRC_TAG) == IRC_TAG then
-                AddIRCMessage(sender, msg:sub(#IRC_TAG + 1), false)
-            elseif msg:sub(1, #GLOBALS_TAG) == GLOBALS_TAG or msg:sub(1, #PING_TAG) == PING_TAG then
-                local plr = Players:FindFirstChild(sender)
-                if plr then getgenv().RadioactiveDetectedUsers[plr] = tick() end
-            end
-        end)
-    end
-end)
-
-local _, IRCInput = CreateInput(IRCSection, "Type a message...")
-CreateButton(IRCSection, "Send", function()
-    local msg = IRCInput.Text
-    if msg and msg ~= "" then
-        SendTaggedMessage(IRC_TAG, msg)
-        AddIRCMessage(LocalPlayer.Name, msg, true)
-        IRCInput.Text = ""
-    end
-end)
-
--- Globals
-local GlobalsSection = CreateSection(PartyContent, "Globals")
-CreateToggle(GlobalsSection, "Globals (R above script users)", false, function(state)
-    getgenv().GlobalsEnabled = state
-    if state then
-        getgenv().GlobalsPingThread = task.spawn(function()
-            while getgenv().GlobalsEnabled do
-                SendTaggedMessage(PING_TAG, "p")
-                task.wait(5)
-            end
-        end)
-        getgenv().GlobalsConn = RunService.RenderStepped:Connect(function()
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-                    local lastSeen = getgenv().RadioactiveDetectedUsers[p]
-                    if lastSeen and (tick() - lastSeen) < 30 then
-                        local head = p.Character.Head
-                        if not head:FindFirstChild("RadioactiveR") then
-                            local bb = Instance.new("BillboardGui")
-                            bb.Name = "RadioactiveR"
-                            bb.Size = UDim2.new(0, 30, 0, 30)
-                            bb.StudsOffsetWorldSpace = Vector3.new(0, 2.5, 0)
-                            bb.AlwaysOnTop = true
-                            bb.Parent = head
-                            local lbl = Instance.new("TextLabel")
-                            lbl.Size = UDim2.new(1, 0, 1, 0)
-                            lbl.BackgroundTransparency = 1
-                            lbl.Text = "R"
-                            lbl.TextColor3 = Config.AccentColor
-                            lbl.TextStrokeTransparency = 0
-                            lbl.Font = Config.FontBold
-                            lbl.TextSize = 22
-                            lbl.Parent = bb
-                            RegisterThemeElement(lbl, "text", false)
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if getgenv().GlobalsPingThread then task.cancel(getgenv().GlobalsPingThread) end
-        if getgenv().GlobalsConn then getgenv().GlobalsConn:Disconnect() end
-        for _, p in ipairs(Players:GetPlayers()) do
-            if p.Character and p.Character:FindFirstChild("Head") then
-                local r = p.Character.Head:FindFirstChild("RadioactiveR")
-                if r then r:Destroy() end
-            end
-        end
-    end
-end)
-
--- Sync Points (через чат-реле)
-local SyncSection = CreateSection(PartyContent, "Sync Points with Friends")
-local SYNC_TAG = "[RADSYNC]"
-
-CreateToggle(SyncSection, "Sync Points (Same-Server)", false, function(state)
-    getgenv().SyncPointsEnabled = state
-    if state then
-        getgenv().SyncThread = task.spawn(function()
-            while getgenv().SyncPointsEnabled do
-                if #PointsList > 0 then
-                    local packet = {}
-                    for _, p in pairs(PointsList) do
-                        table.insert(packet, {name = p.name, x = p.pos.X, y = p.pos.Y, z = p.pos.Z})
-                    end
-                    local ok, encoded = pcall(function() return HttpService:JSONEncode(packet) end)
-                    if ok and #encoded < 200 then
-                        SendTaggedMessage(SYNC_TAG, encoded)
-                    end
-                end
-                task.wait(3)
-            end
-        end)
-    else
-        if getgenv().SyncThread then task.cancel(getgenv().SyncThread) end
-        for key, m in pairs(RemoteWorldMarkers) do m.part:Destroy() end
-        for key, df in pairs(RemoteMiniMapDots) do df:Destroy() end
-        RemoteWorldMarkers = {}
-        RemoteMiniMapDots = {}
-    end
-end)
-
-local function CreateRemoteMarker(key, owner, pData)
-    local pos = Vector3.new(pData.x, pData.y, pData.z)
-    local part = Instance.new("Part")
-    part.Name = "RemotePoint_" .. key
-    part.Size = Vector3.new(0.5, 3, 0.5)
-    part.Position = pos + Vector3.new(0, 1.5, 0)
-    part.Anchored = true
-    part.CanCollide = false
-    part.Material = Enum.Material.Neon
-    part.Color = Config.FriendColor
-    part.Transparency = 0.2
-    part.Parent = WorldFolder
-    local bb = Instance.new("BillboardGui")
-    bb.Size = UDim2.new(0, 200, 0, 60)
-    bb.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
-    bb.AlwaysOnTop = true
-    bb.Parent = part
-    local ownerLbl = Instance.new("TextLabel")
-    ownerLbl.Size = UDim2.new(1, 0, 0, 14)
-    ownerLbl.BackgroundTransparency = 1
-    ownerLbl.Text = owner
-    ownerLbl.TextColor3 = Config.FriendColor
-    ownerLbl.TextStrokeTransparency = 0
-    ownerLbl.Font = Config.FontBold
-    ownerLbl.TextSize = 11
-    ownerLbl.Parent = bb
-    local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(1, 0, 0, 16)
-    nameLbl.Position = UDim2.new(0, 0, 0, 14)
-    nameLbl.BackgroundTransparency = 1
-    nameLbl.Text = pData.name
-    nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLbl.TextStrokeTransparency = 0
-    nameLbl.Font = Config.FontBold
-    nameLbl.TextSize = 14
-    nameLbl.Parent = bb
-    local distLbl = Instance.new("TextLabel")
-    distLbl.Size = UDim2.new(1, 0, 0, 16)
-    distLbl.Position = UDim2.new(0, 0, 0, 30)
-    distLbl.BackgroundTransparency = 1
-    distLbl.Text = "0"
-    distLbl.TextColor3 = Config.AccentColor
-    distLbl.TextStrokeTransparency = 0
-    distLbl.Font = Config.Font
-    distLbl.TextSize = 12
-    distLbl.Parent = bb
-    return {part = part, distLbl = distLbl, owner = owner, pos = pos}
-end
-
--- Перехват SYNC
-local function HandleSyncPacket(sender, encoded)
-    local ownerPlayer = Players:FindFirstChild(sender)
-    if not ownerPlayer or not IsFriend(ownerPlayer) then return end
-    local ok, packet = pcall(function() return HttpService:JSONDecode(encoded) end)
-    if not ok or type(packet) ~= "table" then return end
-    local seen = {}
-    for i, pData in ipairs(packet) do
-        local key = sender .. "_" .. i
-        seen[key] = true
-        if not RemoteWorldMarkers[key] then
-            RemoteWorldMarkers[key] = CreateRemoteMarker(key, sender, pData)
-        else
-            RemoteWorldMarkers[key].part.Position = Vector3.new(pData.x, pData.y, pData.z) + Vector3.new(0, 1.5, 0)
-            RemoteWorldMarkers[key].pos = Vector3.new(pData.x, pData.y, pData.z)
-        end
-    end
-    -- Убираем старые метки этого игрока
-    for key, m in pairs(RemoteWorldMarkers) do
-        if key:sub(1, #sender + 1) == sender .. "_" and not seen[key] then
-            m.part:Destroy()
-            RemoteWorldMarkers[key] = nil
-        end
-    end
-end
-
-if TextChatService.MessageReceived then
-    TextChatService.MessageReceived:Connect(function(message)
-        local text = message.Text or ""
-        local sender = message.TextSource and message.TextSource.Name or "Unknown"
-        if sender == LocalPlayer.Name then return end
-        if text:sub(1, #SYNC_TAG) == SYNC_TAG then
-            HandleSyncPacket(sender, text:sub(#SYNC_TAG + 1))
-        end
-    end)
-end
-pcall(function()
-    local event = game:GetService("ReplicatedStorage"):FindFirstChild("DefaultChatSystemChatEvents")
-    if event and event.OnMessageDoneFiltering then
-        event.OnMessageDoneFiltering.OnClientEvent:Connect(function(data)
-            local sender = data.FromSpeaker or "Unknown"
-            local msg = data.Message or ""
-            if sender == LocalPlayer.Name then return end
-            if msg:sub(1, #SYNC_TAG) == SYNC_TAG then
-                HandleSyncPacket(sender, msg:sub(#SYNC_TAG + 1))
-            end
-        end)
-    end
-end)
-
--- ==========================================================
 -- THEME
 -- ==========================================================
 local ThemeSection = CreateSection(ThemeContent, "Accent Color (RGB)")
@@ -1527,7 +1246,7 @@ local CONFIG_KEYS = {
     "FlyEnabled", "FlySpeed", "NoclipEnabled",
     "InfJumpEnabled", "AntiAFKEnabled", "GodModeEnabled",
     "FullbrightEnabled", "ESPEnabled", "NoFogEnabled",
-    "FPSBoostEnabled", "GlobalsEnabled", "SyncPointsEnabled"
+    "FPSBoostEnabled"
 }
 
 local function BuildConfigString()
@@ -1603,7 +1322,7 @@ CreateButton(ConfigSection, "Load Config from Text", function()
         RefreshWorldMarkers()
         RefreshPointsList()
     end
-    print("[Radioactive] Config loaded! Re-toggle features to apply fully.")
+    print("[Radioactive] Config loaded!")
 end)
 
 -- DRAGGABLE
@@ -1813,30 +1532,6 @@ RunService.RenderStepped:Connect(function(dt)
     for id, df in pairs(MiniMapPointDots) do
         if not seenPoints[id] then df:Destroy() MiniMapPointDots[id] = nil end
     end
-    local seenRemote = {}
-    for key, m in pairs(RemoteWorldMarkers) do
-        seenRemote[key] = true
-        local rel = m.pos - myPos
-        local ux, uy = rel.X * scale, rel.Z * scale
-        local sx = ux * cosR - uy * sinR
-        local sy = ux * sinR + uy * cosR
-        local clampedX = math.clamp(sx, -halfW + pad, halfW - pad)
-        local clampedY = math.clamp(sy, -halfH + pad, halfH - pad)
-        local df = RemoteMiniMapDots[key]
-        if not df then
-            df = Instance.new("Frame")
-            df.Size = UDim2.new(0, 8, 0, 8)
-            df.BackgroundColor3 = Config.FriendColor
-            df.ZIndex = 5
-            df.Parent = MiniMapArea
-            local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(1, 0) dc.Parent = df
-            RemoteMiniMapDots[key] = df
-        end
-        df.Position = UDim2.new(0.5, clampedX - 4, 0.5, clampedY - 4)
-    end
-    for key, df in pairs(RemoteMiniMapDots) do
-        if not seenRemote[key] then df:Destroy() RemoteMiniMapDots[key] = nil end
-    end
 end)
 
 -- WORLD POINT DISTANCE UPDATE
@@ -1847,9 +1542,6 @@ RunService.RenderStepped:Connect(function()
     for id, point in pairs(PointsList) do
         local m = WorldMarkers[id]
         if m then m.distLbl.Text = tostring(math.floor((point.pos - myPos).Magnitude)) end
-    end
-    for key, m in pairs(RemoteWorldMarkers) do
-        m.distLbl.Text = tostring(math.floor((m.pos - myPos).Magnitude))
     end
 end)
 
