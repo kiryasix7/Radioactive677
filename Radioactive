@@ -1,5 +1,9 @@
--- Radioactive | Expensive Style UI (Smooth Fade + Keybinds)
--- RSHIFT скрывает/показывает меню.
+-- Radioactive | Expensive Style UI v6
+-- RSHIFT - меню
+-- [Bind] → клавиша = бинд
+-- [x] = удалить бинд
+-- ESC = отмена бинда
+-- Зелёный текст в Keybinds HUD = функция включена
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -27,7 +31,9 @@ local Config = {
     Font = Enum.Font.GothamMedium,
     FontBold = Enum.Font.GothamBold,
     FriendColor = Color3.fromRGB(80, 220, 100),
-    MiniMapPlayerColor = Color3.fromRGB(60, 140, 255)
+    MiniMapPlayerColor = Color3.fromRGB(60, 140, 255),
+    BindOnColor = Color3.fromRGB(120, 240, 120),
+    BindOffColor = Color3.fromRGB(255, 255, 255)
 }
 
 local ThemeElements = {}
@@ -45,54 +51,37 @@ end
 -- ==========================================================
 -- KEYBIND SYSTEM
 -- ==========================================================
-local KeybindData = {}       -- [id] = {key, toggle, label, isHovered}
-local BindingTarget = nil    -- id текущего бинда, который ждёт клавишу
-
--- Читаемая карта клавиш для сохранения в конфиг
-local function KeyToName(keyCode)
-    if not keyCode then return nil end
-    return keyCode.Name
-end
-local function NameToKey(name)
-    if not name then return nil end
-    return Enum.KeyCode[name]
-end
+local KeybindData = {}
+local BindingTarget = nil
+local RefreshKeybindsHUD = function() end
 
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
 
-    -- Ловим клавишу для назначения бинда
     if BindingTarget then
         if input.UserInputType == Enum.UserInputType.Keyboard then
             local data = KeybindData[BindingTarget]
             if data then
-                if input.KeyCode == Enum.KeyCode.Backspace or input.KeyCode == Enum.KeyCode.Delete or input.KeyCode == Enum.KeyCode.Escape then
-                    data.key = nil
-                    data.label.Text = ""
+                if input.KeyCode == Enum.KeyCode.Escape then
+                    if data.key then
+                        data.label.Text = "[" .. data.key.Name .. "]"
+                        data.label.TextColor3 = Color3.fromRGB(120, 220, 120)
+                    else
+                        data.label.Text = "[Bind]"
+                        data.label.TextColor3 = Color3.fromRGB(160, 160, 160)
+                    end
                 else
                     data.key = input.KeyCode
                     data.label.Text = "[" .. input.KeyCode.Name .. "]"
-                    data.label.TextColor3 = Color3.fromRGB(180, 180, 180)
+                    data.label.TextColor3 = Color3.fromRGB(120, 220, 120)
                 end
             end
             BindingTarget = nil
+            RefreshKeybindsHUD()
         end
         return
     end
 
-    -- MMB по строке функции — начинаем ловить клавишу
-    if input.UserInputType == Enum.UserInputType.MouseButton3 then
-        for id, data in pairs(KeybindData) do
-            if data.isHovered then
-                BindingTarget = id
-                data.label.Text = "[...]"
-                data.label.TextColor3 = Color3.fromRGB(255, 200, 0)
-                return
-            end
-        end
-    end
-
-    -- Проверяем, не нажата ли клавиша с биндом
     if input.UserInputType == Enum.UserInputType.Keyboard then
         if UserInputService:GetFocusedTextBox() then return end
         for _, data in pairs(KeybindData) do
@@ -102,6 +91,11 @@ UserInputService.InputBegan:Connect(function(input, gp)
         end
     end
 end)
+
+local function NameToKey(name)
+    if not name then return nil end
+    return Enum.KeyCode[name]
+end
 
 -- PERSISTENT STATE
 local FriendList = {}
@@ -121,7 +115,7 @@ local function LoadData()
             if type(raw) == "table" then
                 for _, p in ipairs(raw) do
                     PointIdCounter = PointIdCounter + 1
-                    PointsList[PointIdCounter] = {id = PointIdCounter, name = p.name, pos = Vector3.new(p.x, p.y, p.z)}
+                    PointsList[PointIdCounter] = {id = PointIdCounter, name = p.name, pos = Vector3.new(p.x, p.y, p.z), visible = true}
                 end
             end
         end
@@ -265,6 +259,88 @@ AuxScreen.IgnoreGuiInset = true
 AuxScreen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 AuxScreen.Parent = parentGui
 
+-- KEYBINDS HUD
+local KeybindsHUD = Instance.new("Frame")
+KeybindsHUD.Size = UDim2.new(0, 220, 0, 40)
+KeybindsHUD.Position = UDim2.new(1, -240, 0, 100)
+KeybindsHUD.BackgroundColor3 = Config.MainBg
+KeybindsHUD.BackgroundTransparency = 0.15
+KeybindsHUD.BorderSizePixel = 0
+KeybindsHUD.AutomaticSize = Enum.AutomaticSize.Y
+KeybindsHUD.Visible = false
+KeybindsHUD.Parent = AuxScreen
+local KBH_Corner = Instance.new("UICorner") KBH_Corner.CornerRadius = UDim.new(0, 8) KBH_Corner.Parent = KeybindsHUD
+local KBH_Stroke = Instance.new("UIStroke") KBH_Stroke.Color = Color3.fromRGB(40,40,40) KBH_Stroke.Thickness = 1.5 KBH_Stroke.Parent = KeybindsHUD
+
+local KBH_Title = Instance.new("TextLabel")
+KBH_Title.Size = UDim2.new(1, -20, 0, 20)
+KBH_Title.Position = UDim2.new(0, 10, 0, 6)
+KBH_Title.BackgroundTransparency = 1
+KBH_Title.Text = "KEYBINDS"
+KBH_Title.TextColor3 = Config.AccentColor
+KBH_Title.Font = Config.FontBold
+KBH_Title.TextSize = 12
+KBH_Title.TextXAlignment = Enum.TextXAlignment.Left
+KBH_Title.Parent = KeybindsHUD
+RegisterThemeElement(KBH_Title, "text", false)
+
+local KBH_List = Instance.new("Frame")
+KBH_List.Size = UDim2.new(1, -20, 0, 0)
+KBH_List.Position = UDim2.new(0, 10, 0, 28)
+KBH_List.BackgroundTransparency = 1
+KBH_List.AutomaticSize = Enum.AutomaticSize.Y
+KBH_List.Parent = KeybindsHUD
+local KBH_LL = Instance.new("UIListLayout") KBH_LL.FillDirection = Enum.FillDirection.Vertical KBH_LL.Padding = UDim.new(0, 3) KBH_LL.SortOrder = Enum.SortOrder.LayoutOrder KBH_LL.Parent = KBH_List
+local KBH_Pad = Instance.new("UIPadding") KBH_Pad.PaddingBottom = UDim.new(0, 8) KBH_Pad.Parent = KBH_List
+
+RefreshKeybindsHUD = function()
+    for _, c in ipairs(KBH_List:GetChildren()) do
+        if c:IsA("TextLabel") then c:Destroy() end
+    end
+    for id, data in pairs(KeybindData) do
+        data.hudLabel = nil
+    end
+    local count = 0
+    for id, data in pairs(KeybindData) do
+        if data.key and data.name then
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1, 0, 0, 16)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = "[" .. data.key.Name .. "]  " .. data.name
+            lbl.TextColor3 = Config.BindOffColor
+            lbl.Font = Config.Font
+            lbl.TextSize = 12
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Parent = KBH_List
+            data.hudLabel = lbl
+            count = count + 1
+        end
+    end
+    if count == 0 then
+        KeybindsHUD.Visible = false
+    else
+        if getgenv().KeybindsHUDEnabled then KeybindsHUD.Visible = true end
+    end
+end
+
+-- Цвет-апдейтер для Keybinds HUD (зелёный = вкл, белый = выкл)
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if getgenv().KeybindsHUDEnabled and KeybindsHUD.Visible then
+            for id, data in pairs(KeybindData) do
+                if data.hudLabel and data.hudLabel.Parent and data.getState then
+                    local on = data.getState()
+                    local targetColor = on and Config.BindOnColor or Config.BindOffColor
+                    if data.hudLabel.TextColor3 ~= targetColor then
+                        data.hudLabel.TextColor3 = targetColor
+                    end
+                end
+            end
+        end
+    end
+end)
+
 -- TARGET HUD
 local TargetFrame = Instance.new("Frame")
 TargetFrame.Size = UDim2.new(0, 220, 0, 65)
@@ -378,7 +454,6 @@ for i = 1, 15 do
     table.insert(MiniMapGridLines, {frame = line, isVertical = false})
 end
 
--- Синий кружок игрока (не зависит от темы)
 local MiniMapPlayerDot = Instance.new("Frame")
 MiniMapPlayerDot.Size = UDim2.new(0, 10, 0, 10)
 MiniMapPlayerDot.Position = UDim2.new(0.5, -5, 0.5, -5)
@@ -491,15 +566,14 @@ local function CreateSection(parent, titleText)
     return Section
 end
 
--- CreateToggle С БИНДАМИ
-local function CreateToggle(parent, textStr, defaultState, callback)
+local function CreateToggle(parent, textStr, defaultState, callback, noBind)
     local F = Instance.new("Frame")
     F.Size = UDim2.new(1, 0, 0, 25)
     F.BackgroundTransparency = 1
     F.Parent = parent
 
     local L = Instance.new("TextLabel")
-    L.Size = UDim2.new(1, -140, 1, 0)
+    L.Size = UDim2.new(1, -150, 1, 0)
     L.BackgroundTransparency = 1
     L.Text = textStr
     L.TextColor3 = Config.TextColor
@@ -507,18 +581,6 @@ local function CreateToggle(parent, textStr, defaultState, callback)
     L.TextSize = 14
     L.TextXAlignment = Enum.TextXAlignment.Left
     L.Parent = F
-
-    -- Метка бинда
-    local BindLabel = Instance.new("TextLabel")
-    BindLabel.Size = UDim2.new(0, 45, 1, 0)
-    BindLabel.Position = UDim2.new(1, -90, 0, 0)
-    BindLabel.BackgroundTransparency = 1
-    BindLabel.Text = ""
-    BindLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-    BindLabel.Font = Config.Font
-    BindLabel.TextSize = 11
-    BindLabel.TextXAlignment = Enum.TextXAlignment.Center
-    BindLabel.Parent = F
 
     local B = Instance.new("Frame")
     B.Size = UDim2.new(0, 36, 0, 20)
@@ -535,7 +597,6 @@ local function CreateToggle(parent, textStr, defaultState, callback)
     local KC = Instance.new("UICorner") KC.CornerRadius = UDim.new(1, 0) KC.Parent = K
 
     local state = defaultState
-
     local function toggleValue()
         state = not state
         Tween(B, 0.25, {BackgroundColor3 = state and Config.AccentColor or Color3.fromRGB(60,60,60)})
@@ -550,19 +611,57 @@ local function CreateToggle(parent, textStr, defaultState, callback)
     btn.Parent = F
     btn.MouseButton1Click:Connect(toggleValue)
 
-    -- Регистрация бинда (hover на всю строку)
-    local bindData = {
-        key = nil,
-        toggle = toggleValue,
-        label = BindLabel,
-        isHovered = false,
-        name = textStr
-    }
-    F.MouseEnter:Connect(function() bindData.isHovered = true end)
-    F.MouseLeave:Connect(function() bindData.isHovered = false end)
+    if not noBind then
+        local BindBtn = Instance.new("TextButton")
+        BindBtn.Size = UDim2.new(0, 55, 0, 20)
+        BindBtn.Position = UDim2.new(1, -120, 0.5, -10)
+        BindBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        BindBtn.Text = "[Bind]"
+        BindBtn.TextColor3 = Color3.fromRGB(160, 160, 160)
+        BindBtn.Font = Config.Font
+        BindBtn.TextSize = 11
+        BindBtn.AutoButtonColor = false
+        BindBtn.Parent = F
+        local BBC = Instance.new("UICorner") BBC.CornerRadius = UDim.new(0, 4) BBC.Parent = BindBtn
+        local BBS = Instance.new("UIStroke") BBS.Color = Color3.fromRGB(60, 60, 60) BBS.Thickness = 1 BBS.Parent = BindBtn
 
-    local id = "toggle_" .. tostring(textStr)
-    KeybindData[id] = bindData
+        local UnbindBtn = Instance.new("TextButton")
+        UnbindBtn.Size = UDim2.new(0, 18, 0, 20)
+        UnbindBtn.Position = UDim2.new(1, -62, 0.5, -10)
+        UnbindBtn.BackgroundColor3 = Color3.fromRGB(50, 25, 25)
+        UnbindBtn.Text = "x"
+        UnbindBtn.TextColor3 = Color3.fromRGB(255, 130, 130)
+        UnbindBtn.Font = Config.FontBold
+        UnbindBtn.TextSize = 12
+        UnbindBtn.AutoButtonColor = false
+        UnbindBtn.Parent = F
+        local UBC = Instance.new("UICorner") UBC.CornerRadius = UDim.new(0, 4) UBC.Parent = UnbindBtn
+        local UBS = Instance.new("UIStroke") UBS.Color = Color3.fromRGB(70, 40, 40) UBS.Thickness = 1 UBS.Parent = UnbindBtn
+
+        local id = "toggle_" .. textStr
+        local bindData = {
+            key = nil,
+            toggle = toggleValue,
+            label = BindBtn,
+            name = textStr,
+            getState = function() return state end
+        }
+        KeybindData[id] = bindData
+
+        BindBtn.MouseButton1Click:Connect(function()
+            BindingTarget = id
+            BindBtn.Text = "[...]"
+            BindBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
+        end)
+
+        UnbindBtn.MouseButton1Click:Connect(function()
+            bindData.key = nil
+            BindBtn.Text = "[Bind]"
+            BindBtn.TextColor3 = Color3.fromRGB(160, 160, 160)
+            BindingTarget = nil
+            RefreshKeybindsHUD()
+        end)
+    end
 
     return F
 end
@@ -656,29 +755,6 @@ local function CreateButton(parent, textStr, callback)
     B.MouseLeave:Connect(function() Tween(B, 0.18, {BackgroundColor3 = Config.ElementBg}) end)
     B.MouseButton1Click:Connect(function() if callback then callback() end end)
     return B
-end
-
-local function CreateInput(parent, placeholder)
-    local F = Instance.new("Frame")
-    F.Size = UDim2.new(1, 0, 0, 30)
-    F.BackgroundColor3 = Config.ElementBg
-    F.Parent = parent
-    local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 6) c.Parent = F
-    local s = Instance.new("UIStroke") s.Color = Color3.fromRGB(45,45,45) s.Thickness = 1 s.Parent = F
-    local T = Instance.new("TextBox")
-    T.Size = UDim2.new(1, -12, 1, 0)
-    T.Position = UDim2.new(0, 6, 0, 0)
-    T.BackgroundTransparency = 1
-    T.Text = ""
-    T.PlaceholderText = placeholder or ""
-    T.PlaceholderColor3 = Config.TextDim
-    T.TextColor3 = Config.TextColor
-    T.Font = Config.Font
-    T.TextSize = 13
-    T.TextXAlignment = Enum.TextXAlignment.Left
-    T.ClearTextOnFocus = false
-    T.Parent = F
-    return F, T
 end
 
 local function CreateXYZRow(parent)
@@ -783,14 +859,14 @@ CreateToggle(WMSection, "Watermark Enabled", true, function(s)
         Tween(HUD_Stroke, 0.3, {Transparency = 1})
         task.delay(0.3, function() HUD_MainFrame.Visible = false end)
     end
-end)
-CreateToggle(WMSection, "Show Name", true, function(s) WatermarkState.Name = s ApplyWatermarkState() end)
-CreateToggle(WMSection, "Show Nickname", true, function(s) WatermarkState.Nickname = s ApplyWatermarkState() end)
-CreateToggle(WMSection, "Show FPS", true, function(s) WatermarkState.FPS = s ApplyWatermarkState() end)
-CreateToggle(WMSection, "Show Ping", true, function(s) WatermarkState.Ping = s ApplyWatermarkState() end)
-CreateToggle(WMSection, "Show TPS", true, function(s) WatermarkState.TPS = s ApplyWatermarkState() end)
-CreateToggle(WMSection, "Show Coordinates", true, function(s) WatermarkState.Coords = s ApplyWatermarkState() end)
-CreateToggle(WMSection, "Show Speed", true, function(s) WatermarkState.Speed = s ApplyWatermarkState() end)
+end, true)
+CreateToggle(WMSection, "Show Name", true, function(s) WatermarkState.Name = s ApplyWatermarkState() end, true)
+CreateToggle(WMSection, "Show Nickname", true, function(s) WatermarkState.Nickname = s ApplyWatermarkState() end, true)
+CreateToggle(WMSection, "Show FPS", true, function(s) WatermarkState.FPS = s ApplyWatermarkState() end, true)
+CreateToggle(WMSection, "Show Ping", true, function(s) WatermarkState.Ping = s ApplyWatermarkState() end, true)
+CreateToggle(WMSection, "Show TPS", true, function(s) WatermarkState.TPS = s ApplyWatermarkState() end, true)
+CreateToggle(WMSection, "Show Coordinates", true, function(s) WatermarkState.Coords = s ApplyWatermarkState() end, true)
+CreateToggle(WMSection, "Show Speed", true, function(s) WatermarkState.Speed = s ApplyWatermarkState() end, true)
 
 local TargetHUDSection = CreateSection(HUDContent, "Target HUD")
 CreateToggle(TargetHUDSection, "Target HUD Enabled", true, function(s)
@@ -800,8 +876,19 @@ CreateToggle(TargetHUDSection, "Target HUD Enabled", true, function(s)
         Tween(TFS, 0.25, {Transparency = 1})
         task.delay(0.25, function() TargetFrame.Visible = false end)
     end
-end)
+end, true)
 getgenv().TargetHUDEnabled = true
+
+local KeybindsHUDSection = CreateSection(HUDContent, "Keybinds HUD")
+CreateToggle(KeybindsHUDSection, "Show Keybinds HUD", true, function(s)
+    getgenv().KeybindsHUDEnabled = s
+    if not s then
+        KeybindsHUD.Visible = false
+    else
+        RefreshKeybindsHUD()
+    end
+end, true)
+getgenv().KeybindsHUDEnabled = true
 
 local MiniMapSection = CreateSection(HUDContent, "MiniMap")
 CreateToggle(MiniMapSection, "MiniMap Enabled", true, function(s)
@@ -816,7 +903,7 @@ CreateToggle(MiniMapSection, "MiniMap Enabled", true, function(s)
         Tween(MFS, 0.3, {Transparency = 1})
         task.delay(0.3, function() MiniMapFrame.Visible = false end)
     end
-end)
+end, true)
 
 -- COMBAT
 local CombatMain = CreateSection(CombatContent, "Aimbot")
@@ -1063,7 +1150,7 @@ CreateToggle(PlayerAntiAFK, "Anti AFK", false, function(state)
     else
         if getgenv().AntiAFKConnection then getgenv().AntiAFKConnection:Disconnect() end
     end
-end)
+end, true)
 
 local PlayerGod = CreateSection(PlayerContent, "God Mode")
 CreateToggle(PlayerGod, "God Mode", false, function(state)
@@ -1119,7 +1206,7 @@ CreateToggle(PlayerProximity, "Auto Interact (Proximity)", false, function(state
     else
         if getgenv().AutoInteractConnection then getgenv().AutoInteractConnection:Disconnect() end
     end
-end)
+end, true)
 
 -- RENDER
 local RenderFullbright = CreateSection(RenderContent, "Fullbright")
@@ -1137,7 +1224,7 @@ CreateToggle(RenderFullbright, "Fullbright Enabled", false, function(state)
         Lighting.OutdoorAmbient = getgenv().OriginalOutdoorAmbient or Color3.fromRGB(0,0,0)
         Lighting.Brightness = getgenv().OriginalBrightness or 1
     end
-end)
+end, true)
 
 local RenderESP = CreateSection(RenderContent, "Player ESP")
 CreateToggle(RenderESP, "ESP Enabled", false, function(state)
@@ -1174,7 +1261,7 @@ CreateToggle(RenderESP, "ESP Enabled", false, function(state)
         for _, o in pairs(getgenv().ESPObjects or {}) do o:Destroy() end
         getgenv().ESPObjects = {}
     end
-end)
+end, true)
 
 local RenderFOV = CreateSection(RenderContent, "Custom FOV")
 CreateSlider(RenderFOV, "Field of View", 70, 180, 70, function(v)
@@ -1209,7 +1296,7 @@ CreateToggle(RenderFog, "Custom Fog Enabled", false, function(state)
     end
     getgenv().FogEnabled = state
     ApplyFog()
-end)
+end, true)
 
 CreateSlider(RenderFog, "Red", 0, 255, 200, function(v) getgenv().FogR = v ApplyFog() end)
 CreateSlider(RenderFog, "Green", 0, 255, 200, function(v) getgenv().FogG = v ApplyFog() end)
@@ -1229,7 +1316,7 @@ CreateToggle(RenderNoFog, "No Fog", false, function(state)
         Lighting.FogEnd = getgenv().OriginalFogEnd or 100000
         Lighting.FogStart = getgenv().OriginalFogStart or 0
     end
-end)
+end, true)
 
 local RenderWorld = CreateSection(RenderContent, "World Customizer")
 
@@ -1247,13 +1334,8 @@ local function SpawnStar()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     local center = char.HumanoidRootPart.Position
-    local offset = Vector3.new(
-        math.random(-200, 200),
-        math.random(150, 300),
-        math.random(-200, 200)
-    )
+    local offset = Vector3.new(math.random(-200, 200), math.random(150, 300), math.random(-200, 200))
     local spawnPos = center + offset
-
     local star = Instance.new("Part")
     star.Shape = Enum.PartType.Ball
     star.Size = Vector3.new(getgenv().StarsSize or 1.5, getgenv().StarsSize or 1.5, getgenv().StarsSize or 1.5)
@@ -1264,22 +1346,14 @@ local function SpawnStar()
     star.Color = getgenv().StarsColor or Color3.fromRGB(255,255,255)
     star.Transparency = 0.1
     star.Parent = WorldStarsFolder
-
     local light = Instance.new("PointLight")
     light.Brightness = 3
     light.Range = 15
     light.Color = getgenv().StarsColor or Color3.fromRGB(255,255,255)
     light.Parent = star
-
     star.AssemblyLinearVelocity = Vector3.new(0, -(getgenv().StarsFallSpeed or 12), 0)
-
-    star.Touched:Connect(function()
-        star:Destroy()
-    end)
-
-    task.delay(30, function()
-        if star and star.Parent then star:Destroy() end
-    end)
+    star.Touched:Connect(function() star:Destroy() end)
+    task.delay(30, function() if star and star.Parent then star:Destroy() end end)
 end
 
 CreateToggle(RenderWorld, "Falling Stars", false, function(state)
@@ -1297,7 +1371,7 @@ CreateToggle(RenderWorld, "Falling Stars", false, function(state)
         if getgenv().StarsThread then task.cancel(getgenv().StarsThread) end
         WorldStarsFolder:ClearAllChildren()
     end
-end)
+end, true)
 
 CreateSlider(RenderWorld, "Stars Rate (per sec)", 1, 100, 35, function(v) getgenv().StarsRate = v end)
 CreateSlider(RenderWorld, "Stars Size x10", 5, 50, 15, function(v) getgenv().StarsSize = v / 10 end)
@@ -1311,7 +1385,7 @@ CreateButton(RenderWorld, "Stars Color: White", function()
         if l then l.Color = getgenv().StarsColor end
     end
 end)
-CreateButton(RenderWorld, "Stars Color: Radioactive Red", function()
+CreateButton(RenderWorld, "Stars Color: Red", function()
     getgenv().StarsColor = Color3.fromRGB(255, 60, 60)
     for _, s in ipairs(WorldStarsFolder:GetChildren()) do
         if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
@@ -1363,7 +1437,7 @@ CreateToggle(MiscFPSBoost, "FPS Boost", false, function(state)
         Lighting.GlobalShadows = getgenv().OriginalGlobalShadows or true
         Lighting.QualityLevel = getgenv().OriginalQualityLevel or 21
     end
-end)
+end, true)
 
 local MiscAntiFling = CreateSection(MiscContent, "Anti Fling")
 CreateToggle(MiscAntiFling, "Anti Fling", false, function(state)
@@ -1381,7 +1455,7 @@ CreateToggle(MiscAntiFling, "Anti Fling", false, function(state)
     else
         if getgenv().AntiFlingConnection then getgenv().AntiFlingConnection:Disconnect() end
     end
-end)
+end, true)
 
 local MiscClickTP = CreateSection(MiscContent, "Click Teleport")
 CreateToggle(MiscClickTP, "Click Teleport (Ctrl+Click)", false, function(state)
@@ -1403,68 +1477,123 @@ UserInputService.InputBegan:Connect(function(input, gp)
 end)
 
 -- FRIENDS TAB
-local RefreshFriendList
+local RefreshFriendsUI, RefreshPointsUI, RefreshWorldMarkers
 
-local AddFriendSection = CreateSection(FriendsContent, "Add Friend")
-local _, AddFriendInput = CreateInput(AddFriendSection, "Enter player name...")
+local PlayersListSection = CreateSection(FriendsContent, "Players on Server")
+local PlayersScroll = Instance.new("ScrollingFrame")
+PlayersScroll.Size = UDim2.new(1, 0, 0, 200)
+PlayersScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+PlayersScroll.BorderSizePixel = 0
+PlayersScroll.ScrollBarThickness = 4
+PlayersScroll.ScrollBarImageColor3 = Config.AccentColor
+PlayersScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+PlayersScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+PlayersScroll.Parent = PlayersListSection
+local ps_c = Instance.new("UICorner") ps_c.CornerRadius = UDim.new(0, 6) ps_c.Parent = PlayersScroll
+local ps_s = Instance.new("UIStroke") ps_s.Color = Color3.fromRGB(45,45,45) ps_s.Thickness = 1 ps_s.Parent = PlayersScroll
+local ps_pad = Instance.new("UIPadding") ps_pad.PaddingLeft = UDim.new(0, 6) ps_pad.PaddingRight = UDim.new(0, 6) ps_pad.PaddingTop = UDim.new(0, 6) ps_pad.Parent = PlayersScroll
+local ps_lay = Instance.new("UIListLayout") ps_lay.SortOrder = Enum.SortOrder.LayoutOrder ps_lay.Padding = UDim.new(0, 4) ps_lay.Parent = PlayersScroll
+
 local FriendListSection = CreateSection(FriendsContent, "Friend List")
+local FriendsScroll = Instance.new("ScrollingFrame")
+FriendsScroll.Size = UDim2.new(1, 0, 0, 200)
+FriendsScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+FriendsScroll.BorderSizePixel = 0
+FriendsScroll.ScrollBarThickness = 4
+FriendsScroll.ScrollBarImageColor3 = Config.FriendColor
+FriendsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+FriendsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+FriendsScroll.Parent = FriendListSection
+local fs_c = Instance.new("UICorner") fs_c.CornerRadius = UDim.new(0, 6) fs_c.Parent = FriendsScroll
+local fs_s = Instance.new("UIStroke") fs_s.Color = Color3.fromRGB(45,45,45) fs_s.Thickness = 1 fs_s.Parent = FriendsScroll
+local fs_pad = Instance.new("UIPadding") fs_pad.PaddingLeft = UDim.new(0, 6) fs_pad.PaddingRight = UDim.new(0, 6) fs_pad.PaddingTop = UDim.new(0, 6) fs_pad.Parent = FriendsScroll
+local fs_lay = Instance.new("UIListLayout") fs_lay.SortOrder = Enum.SortOrder.LayoutOrder fs_lay.Padding = UDim.new(0, 4) fs_lay.Parent = FriendsScroll
 
-RefreshFriendList = function()
-    for _, c in ipairs(FriendListSection:GetChildren()) do
-        if c:IsA("Frame") and c.Name == "FriendRow" then c:Destroy() end
+local function MakeBtn(parent, text, color, callback, width, position)
+    local B = Instance.new("TextButton")
+    B.Size = UDim2.new(0, width or 28, 0, 22)
+    B.Position = position or UDim2.new(1, -34, 0.5, -11)
+    B.BackgroundColor3 = color or Color3.fromRGB(60, 30, 30)
+    B.Text = text
+    B.TextColor3 = Color3.fromRGB(255, 255, 255)
+    B.Font = Config.FontBold
+    B.TextSize = 11
+    B.AutoButtonColor = false
+    B.Parent = parent
+    local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 4) c.Parent = B
+    B.MouseButton1Click:Connect(function() if callback then callback() end end)
+    return B
+end
+
+RefreshFriendsUI = function()
+    for _, c in ipairs(PlayersScroll:GetChildren()) do
+        if c:IsA("Frame") then c:Destroy() end
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and not IsFriend(p) then
+            local row = Instance.new("Frame")
+            row.Size = UDim2.new(1, 0, 0, 28)
+            row.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+            row.BorderSizePixel = 0
+            row.Parent = PlayersScroll
+            local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 4) rc.Parent = row
+            local nameLbl = Instance.new("TextLabel")
+            nameLbl.Size = UDim2.new(1, -70, 1, 0)
+            nameLbl.Position = UDim2.new(0, 8, 0, 0)
+            nameLbl.BackgroundTransparency = 1
+            nameLbl.Text = p.Name
+            nameLbl.TextColor3 = Config.TextColor
+            nameLbl.Font = Config.Font
+            nameLbl.TextSize = 13
+            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+            nameLbl.Parent = row
+            MakeBtn(row, "+", Color3.fromRGB(40, 90, 40), function()
+                FriendList[string.lower(p.Name)] = p.Name
+                SaveFriends()
+                RefreshFriendsUI()
+            end, 28)
+        end
+    end
+
+    for _, c in ipairs(FriendsScroll:GetChildren()) do
+        if c:IsA("Frame") then c:Destroy() end
     end
     for lname, orig in pairs(FriendList) do
         local row = Instance.new("Frame")
-        row.Name = "FriendRow"
-        row.Size = UDim2.new(1, 0, 0, 24)
-        row.BackgroundTransparency = 1
-        row.Parent = FriendListSection
-        local lbl = Instance.new("TextLabel")
-        lbl.Size = UDim2.new(0.7, 0, 1, 0)
-        lbl.BackgroundTransparency = 1
-        lbl.Text = tostring(orig)
-        lbl.TextColor3 = Config.FriendColor
-        lbl.Font = Config.Font
-        lbl.TextSize = 13
-        lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.Parent = row
-        local del = Instance.new("TextButton")
-        del.Size = UDim2.new(0, 24, 0, 20)
-        del.Position = UDim2.new(1, -24, 0.5, -10)
-        del.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
-        del.Text = "X"
-        del.TextColor3 = Color3.fromRGB(255, 100, 100)
-        del.Font = Config.FontBold
-        del.TextSize = 12
-        del.AutoButtonColor = false
-        del.Parent = row
-        local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(0, 4) dc.Parent = del
-        del.MouseButton1Click:Connect(function()
+        row.Size = UDim2.new(1, 0, 0, 28)
+        row.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+        row.BorderSizePixel = 0
+        row.Parent = FriendsScroll
+        local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 4) rc.Parent = row
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Size = UDim2.new(1, -110, 1, 0)
+        nameLbl.Position = UDim2.new(0, 8, 0, 0)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Text = tostring(orig)
+        nameLbl.TextColor3 = Config.FriendColor
+        nameLbl.Font = Config.Font
+        nameLbl.TextSize = 13
+        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+        nameLbl.Parent = row
+        MakeBtn(row, "M", Color3.fromRGB(40, 60, 100), function()
+            local plr = Players:FindFirstChild(orig)
+            if plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                PointIdCounter = PointIdCounter + 1
+                PointsList[PointIdCounter] = {id = PointIdCounter, name = plr.Name .. "'s position", pos = plr.Character.HumanoidRootPart.Position, visible = true}
+                SavePoints()
+                RefreshWorldMarkers()
+                RefreshPointsUI()
+            end
+        end, 28, UDim2.new(1, -66, 0.5, -11))
+        MakeBtn(row, "X", Color3.fromRGB(60, 30, 30), function()
             FriendList[lname] = nil
             SaveFriends()
-            RefreshFriendList()
-        end)
+            RefreshFriendsUI()
+        end, 28)
     end
 end
 
-CreateButton(AddFriendSection, "Add Friend", function()
-    local n = AddFriendInput.Text
-    if n and n ~= "" then
-        FriendList[string.lower(n)] = n
-        AddFriendInput.Text = ""
-        SaveFriends()
-        RefreshFriendList()
-        print("[Radioactive] Added friend: " .. n)
-    else
-        print("[Radioactive] Enter a player name first!")
-    end
-end)
-
-RefreshFriendList()
-
 -- POINTS TAB
-local RefreshWorldMarkers, RefreshPointsList
-
 local SetPointSection = CreateSection(PointsContent, "Set Point")
 local PointsListSection = CreateSection(PointsContent, "Points List")
 
@@ -1473,111 +1602,274 @@ WorldFolder.Name = "RadioactivePoints"
 WorldFolder.Parent = workspace
 
 local function CreateWorldMarker(point)
-    local part = Instance.new("Part")
-    part.Name = "Point_" .. point.id
-    part.Size = Vector3.new(0.5, 3, 0.5)
-    part.Position = point.pos + Vector3.new(0, 1.5, 0)
-    part.Anchored = true
-    part.CanCollide = false
-    part.Material = Enum.Material.Neon
-    part.Color = Color3.fromRGB(255, 255, 255)
-    part.Transparency = 0.2
-    part.Parent = WorldFolder
+    local model = Instance.new("Model")
+    model.Name = "RadioactivePoint_" .. point.id
+    model.Parent = WorldFolder
+
+    local beam = Instance.new("Part")
+    beam.Name = "Beam"
+    beam.Size = Vector3.new(0.15, 80, 0.15)
+    beam.Position = point.pos + Vector3.new(0, 40, 0)
+    beam.Anchored = true
+    beam.CanCollide = false
+    beam.Material = Enum.Material.Neon
+    beam.Color = Color3.fromRGB(255, 255, 255)
+    beam.Transparency = 0.5
+    beam.Parent = model
+
+    local top = Instance.new("Part")
+    top.Name = "Top"
+    top.Shape = Enum.PartType.Ball
+    top.Size = Vector3.new(1.2, 1.2, 1.2)
+    top.Position = point.pos + Vector3.new(0, 3, 0)
+    top.Anchored = true
+    top.CanCollide = false
+    top.Material = Enum.Material.Neon
+    top.Color = Color3.fromRGB(255, 255, 255)
+    top.Parent = model
+
+    local ground = Instance.new("Part")
+    ground.Name = "Ground"
+    ground.Shape = Enum.PartType.Cylinder
+    ground.Size = Vector3.new(0.15, 5, 5)
+    ground.CFrame = CFrame.new(point.pos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
+    ground.Anchored = true
+    ground.CanCollide = false
+    ground.Material = Enum.Material.Neon
+    ground.Color = Color3.fromRGB(255, 255, 255)
+    ground.Transparency = 0.4
+    ground.Parent = model
+
     local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(0, 200, 0, 40)
-    billboard.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+    billboard.Size = UDim2.new(0, 220, 0, 60)
+    billboard.StudsOffsetWorldSpace = Vector3.new(0, 5, 0)
     billboard.AlwaysOnTop = true
-    billboard.Parent = part
+    billboard.Parent = top
+
+    local bgFrame = Instance.new("Frame")
+    bgFrame.Size = UDim2.new(1, -20, 1, -10)
+    bgFrame.Position = UDim2.new(0, 10, 0, 5)
+    bgFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    bgFrame.BackgroundTransparency = 0.35
+    bgFrame.BorderSizePixel = 0
+    bgFrame.Parent = billboard
+    local bgc = Instance.new("UICorner") bgc.CornerRadius = UDim.new(0, 8) bgc.Parent = bgFrame
+    local bgs = Instance.new("UIStroke") bgs.Color = Color3.fromRGB(255, 255, 255) bgs.Thickness = 1.5 bgs.Parent = bgFrame
+
     local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(1, 0, 0, 18)
+    nameLbl.Size = UDim2.new(1, -10, 0, 22)
+    nameLbl.Position = UDim2.new(0, 5, 0, 3)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = point.name
     nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
     nameLbl.TextStrokeTransparency = 0
     nameLbl.Font = Config.FontBold
-    nameLbl.TextSize = 14
-    nameLbl.Parent = billboard
+    nameLbl.TextSize = 15
+    nameLbl.Parent = bgFrame
+
     local distLbl = Instance.new("TextLabel")
-    distLbl.Size = UDim2.new(1, 0, 0, 16)
-    distLbl.Position = UDim2.new(0, 0, 0, 18)
+    distLbl.Size = UDim2.new(1, -10, 0, 18)
+    distLbl.Position = UDim2.new(0, 5, 0, 25)
     distLbl.BackgroundTransparency = 1
-    distLbl.Text = "0"
-    distLbl.TextColor3 = Config.AccentColor
+    distLbl.Text = "0 studs"
+    distLbl.TextColor3 = Color3.fromRGB(255, 100, 100)
     distLbl.TextStrokeTransparency = 0
     distLbl.Font = Config.Font
     distLbl.TextSize = 12
-    distLbl.Parent = billboard
-    return {part = part, nameLbl = nameLbl, distLbl = distLbl, billboard = billboard}
+    distLbl.Parent = bgFrame
+
+    local spinConn = RunService.Heartbeat:Connect(function(dt)
+        if top and top.Parent then
+            top.CFrame = top.CFrame * CFrame.Angles(0, math.rad(120 * dt), 0)
+        end
+    end)
+
+    local visible = point.visible ~= false
+    beam.Transparency = visible and 0.5 or 1
+    top.Transparency = visible and 0 or 1
+    ground.Transparency = visible and 0.4 or 1
+    billboard.Enabled = visible
+
+    return {model = model, beam = beam, top = top, ground = ground, billboard = billboard, nameLbl = nameLbl, distLbl = distLbl, spinConn = spinConn, pos = point.pos}
 end
 
 local WorldMarkers = {}
 
 RefreshWorldMarkers = function()
     for id, m in pairs(WorldMarkers) do
-        if not PointsList[id] then m.part:Destroy() WorldMarkers[id] = nil end
+        if not PointsList[id] then
+            m.spinConn:Disconnect()
+            m.model:Destroy()
+            WorldMarkers[id] = nil
+        end
     end
     for id, point in pairs(PointsList) do
         if not WorldMarkers[id] then
             WorldMarkers[id] = CreateWorldMarker(point)
         else
-            WorldMarkers[id].part.Position = point.pos + Vector3.new(0, 1.5, 0)
-            WorldMarkers[id].nameLbl.Text = point.name
+            local m = WorldMarkers[id]
+            m.beam.Position = point.pos + Vector3.new(0, 40, 0)
+            m.top.Position = point.pos + Vector3.new(0, 3, 0)
+            m.ground.CFrame = CFrame.new(point.pos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
+            m.nameLbl.Text = point.name
+            m.pos = point.pos
         end
     end
 end
 
-RefreshPointsList = function()
+local function ApplyPointVisibility(id)
+    local m = WorldMarkers[id]
+    local p = PointsList[id]
+    if not m or not p then return end
+    local visible = p.visible ~= false
+    m.beam.Transparency = visible and 0.5 or 1
+    m.top.Transparency = visible and 0 or 1
+    m.ground.Transparency = visible and 0.4 or 1
+    m.billboard.Enabled = visible
+end
+
+RefreshPointsUI = function()
     for _, c in ipairs(PointsListSection:GetChildren()) do
         if c:IsA("Frame") and c.Name == "PointRow" then c:Destroy() end
     end
     for id, point in pairs(PointsList) do
         local row = Instance.new("Frame")
         row.Name = "PointRow"
-        row.Size = UDim2.new(1, 0, 0, 28)
-        row.BackgroundTransparency = 1
+        row.Size = UDim2.new(1, 0, 0, 44)
+        row.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        row.BorderSizePixel = 0
         row.Parent = PointsListSection
+        local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 5) rc.Parent = row
+
+        local topRow = Instance.new("Frame")
+        topRow.Size = UDim2.new(1, 0, 0, 22)
+        topRow.BackgroundTransparency = 1
+        topRow.Parent = row
+
         local inp = Instance.new("TextBox")
-        inp.Size = UDim2.new(0.6, 0, 1, 0)
+        inp.Size = UDim2.new(1, -200, 1, 0)
+        inp.Position = UDim2.new(0, 4, 0, 0)
         inp.BackgroundColor3 = Config.ElementBg
         inp.Text = point.name
         inp.TextColor3 = Config.TextColor
         inp.Font = Config.Font
-        inp.TextSize = 12
+        inp.TextSize = 11
         inp.ClearTextOnFocus = false
-        inp.Parent = row
+        inp.Parent = topRow
         local ic = Instance.new("UICorner") ic.CornerRadius = UDim.new(0, 4) ic.Parent = inp
         inp.FocusLost:Connect(function()
             point.name = inp.Text
             SavePoints()
-            RefreshWorldMarkers()
+            local m = WorldMarkers[id]
+            if m then m.nameLbl.Text = point.name end
         end)
-        local coordsLbl = Instance.new("TextLabel")
-        coordsLbl.Size = UDim2.new(0.3, -32, 1, 0)
-        coordsLbl.Position = UDim2.new(0.6, 0, 0, 0)
-        coordsLbl.BackgroundTransparency = 1
-        coordsLbl.Text = math.floor(point.pos.X) .. "," .. math.floor(point.pos.Y) .. "," .. math.floor(point.pos.Z)
-        coordsLbl.TextColor3 = Config.TextDim
-        coordsLbl.Font = Config.Font
-        coordsLbl.TextSize = 10
-        coordsLbl.TextXAlignment = Enum.TextXAlignment.Center
-        coordsLbl.Parent = row
-        local del = Instance.new("TextButton")
-        del.Size = UDim2.new(0, 24, 0, 22)
-        del.Position = UDim2.new(1, -28, 0.5, -11)
-        del.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
-        del.Text = "X"
-        del.TextColor3 = Color3.fromRGB(255, 100, 100)
-        del.Font = Config.FontBold
-        del.TextSize = 12
-        del.AutoButtonColor = false
-        del.Parent = row
-        local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(0, 4) dc.Parent = del
-        del.MouseButton1Click:Connect(function()
+
+        local copyBtn = Instance.new("TextButton")
+        copyBtn.Size = UDim2.new(0, 28, 1, 0)
+        copyBtn.Position = UDim2.new(1, -190, 0, 0)
+        copyBtn.BackgroundColor3 = Color3.fromRGB(40, 60, 100)
+        copyBtn.Text = "C"
+        copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        copyBtn.Font = Config.FontBold
+        copyBtn.TextSize = 11
+        copyBtn.AutoButtonColor = false
+        copyBtn.Parent = topRow
+        local cc = Instance.new("UICorner") cc.CornerRadius = UDim.new(0, 4) cc.Parent = copyBtn
+        copyBtn.MouseButton1Click:Connect(function()
+            local coordStr = string.format("x%d y%d z%d", math.floor(point.pos.X), math.floor(point.pos.Y), math.floor(point.pos.Z))
+            pcall(function() setclipboard(coordStr) end)
+        end)
+
+        local delBtn = Instance.new("TextButton")
+        delBtn.Size = UDim2.new(0, 28, 1, 0)
+        delBtn.Position = UDim2.new(1, -158, 0, 0)
+        delBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
+        delBtn.Text = "X"
+        delBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        delBtn.Font = Config.FontBold
+        delBtn.TextSize = 11
+        delBtn.AutoButtonColor = false
+        delBtn.Parent = topRow
+        local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(0, 4) dc.Parent = delBtn
+        delBtn.MouseButton1Click:Connect(function()
             PointsList[id] = nil
-            if WorldMarkers[id] then WorldMarkers[id].part:Destroy() WorldMarkers[id] = nil end
+            if WorldMarkers[id] then
+                WorldMarkers[id].spinConn:Disconnect()
+                WorldMarkers[id].model:Destroy()
+                WorldMarkers[id] = nil
+            end
             SavePoints()
-            RefreshPointsList()
+            RefreshPointsUI()
         end)
+
+        local BindBtn = Instance.new("TextButton")
+        BindBtn.Size = UDim2.new(0, 55, 1, 0)
+        BindBtn.Position = UDim2.new(1, -126, 0, 0)
+        BindBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        BindBtn.Text = "[Bind]"
+        BindBtn.TextColor3 = Color3.fromRGB(160, 160, 160)
+        BindBtn.Font = Config.Font
+        BindBtn.TextSize = 10
+        BindBtn.AutoButtonColor = false
+        BindBtn.Parent = topRow
+        local bbc = Instance.new("UICorner") bbc.CornerRadius = UDim.new(0, 4) bbc.Parent = BindBtn
+        local bbs = Instance.new("UIStroke") bbs.Color = Color3.fromRGB(60, 60, 60) bbs.Thickness = 1 bbs.Parent = BindBtn
+
+        local UnbindBtn = Instance.new("TextButton")
+        UnbindBtn.Size = UDim2.new(0, 18, 1, 0)
+        UnbindBtn.Position = UDim2.new(1, -68, 0, 0)
+        UnbindBtn.BackgroundColor3 = Color3.fromRGB(50, 25, 25)
+        UnbindBtn.Text = "x"
+        UnbindBtn.TextColor3 = Color3.fromRGB(255, 130, 130)
+        UnbindBtn.Font = Config.FontBold
+        UnbindBtn.TextSize = 11
+        UnbindBtn.AutoButtonColor = false
+        UnbindBtn.Parent = topRow
+        local ubc = Instance.new("UICorner") ubc.CornerRadius = UDim.new(0, 4) ubc.Parent = UnbindBtn
+        local ubs = Instance.new("UIStroke") ubs.Color = Color3.fromRGB(70, 40, 40) ubs.Thickness = 1 ubs.Parent = UnbindBtn
+
+        local bindId = "point_" .. id
+        local bindData = {
+            key = nil,
+            label = BindBtn,
+            name = "POINT " .. id,
+            toggle = function()
+                point.visible = not (point.visible ~= false)
+                ApplyPointVisibility(id)
+            end,
+            getState = function() return point.visible ~= false end
+        }
+        KeybindData[bindId] = bindData
+
+        BindBtn.MouseButton1Click:Connect(function()
+            BindingTarget = bindId
+            BindBtn.Text = "[...]"
+            BindBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
+        end)
+        UnbindBtn.MouseButton1Click:Connect(function()
+            bindData.key = nil
+            BindBtn.Text = "[Bind]"
+            BindBtn.TextColor3 = Color3.fromRGB(160, 160, 160)
+            BindingTarget = nil
+            RefreshKeybindsHUD()
+        end)
+
+        local botRow = Instance.new("Frame")
+        botRow.Size = UDim2.new(1, 0, 0, 22)
+        botRow.Position = UDim2.new(0, 0, 0, 22)
+        botRow.BackgroundTransparency = 1
+        botRow.Parent = row
+
+        local coordLbl = Instance.new("TextLabel")
+        coordLbl.Size = UDim2.new(1, -10, 1, 0)
+        coordLbl.Position = UDim2.new(0, 5, 0, 0)
+        coordLbl.BackgroundTransparency = 1
+        coordLbl.Text = string.format("x%d  y%d  z%d", math.floor(point.pos.X), math.floor(point.pos.Y), math.floor(point.pos.Z))
+        coordLbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+        coordLbl.Font = Config.Font
+        coordLbl.TextSize = 10
+        coordLbl.TextXAlignment = Enum.TextXAlignment.Left
+        coordLbl.Parent = botRow
     end
 end
 
@@ -1585,10 +1877,10 @@ CreateButton(SetPointSection, "Create Point at My Position", function()
     local c = LocalPlayer.Character
     if not c or not c:FindFirstChild("HumanoidRootPart") then return end
     PointIdCounter = PointIdCounter + 1
-    PointsList[PointIdCounter] = {id = PointIdCounter, name = "Point " .. PointIdCounter, pos = c.HumanoidRootPart.Position}
+    PointsList[PointIdCounter] = {id = PointIdCounter, name = "Point " .. PointIdCounter, pos = c.HumanoidRootPart.Position, visible = true}
     SavePoints()
     RefreshWorldMarkers()
-    RefreshPointsList()
+    RefreshPointsUI()
 end)
 
 local CoordLabel2 = Instance.new("TextLabel")
@@ -1609,21 +1901,23 @@ CreateButton(SetPointSection, "Create Point by Coordinates", function()
     local z = tonumber(CoordZInput.Text)
     if x and y and z then
         PointIdCounter = PointIdCounter + 1
-        PointsList[PointIdCounter] = {id = PointIdCounter, name = "Point " .. PointIdCounter, pos = Vector3.new(x, y, z)}
+        PointsList[PointIdCounter] = {id = PointIdCounter, name = "Point " .. PointIdCounter, pos = Vector3.new(x, y, z), visible = true}
         SavePoints()
         RefreshWorldMarkers()
-        RefreshPointsList()
+        RefreshPointsUI()
         CoordXInput.Text = ""
         CoordYInput.Text = ""
         CoordZInput.Text = ""
-        print("[Radioactive] Created point at " .. x .. ", " .. y .. ", " .. z)
-    else
-        print("[Radioactive] Invalid coordinates!")
     end
 end)
 
+RefreshFriendsUI()
 RefreshWorldMarkers()
-RefreshPointsList()
+RefreshPointsUI()
+RefreshKeybindsHUD()
+
+Players.PlayerAdded:Connect(function() RefreshFriendsUI() end)
+Players.PlayerRemoving:Connect(function() RefreshFriendsUI() end)
 
 -- THEME
 local ThemeSection = CreateSection(ThemeContent, "Accent Color (RGB)")
@@ -1650,11 +1944,8 @@ CreateSlider(ThemeSection, "Red", 0, 255, 190, function(v) UpdateTheme(Color3.fr
 CreateSlider(ThemeSection, "Green", 0, 255, 45, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), v, math.floor(Config.AccentColor.B*255))) end)
 CreateSlider(ThemeSection, "Blue", 0, 255, 45, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), math.floor(Config.AccentColor.G*255), v)) end)
 
--- ==========================================================
--- CONFIGURATIONS (с сохранением биндов)
--- ==========================================================
+-- CONFIGURATIONS
 local ConfigSection = CreateSection(ConfigContent, "Config Management")
-
 local CONFIG_KEYS = {
     "AimbotEnabled", "AimbotFOV", "AimbotTarget", "TeamCheck", "WallCheck",
     "HitboxEnabled", "HitboxSize",
@@ -1670,53 +1961,36 @@ local CONFIG_KEYS = {
 
 local function BuildConfigString()
     local cfg = {
-        version = 2,
+        version = 6,
         timestamp = os.time(),
         features = {},
-        theme = {
-            r = math.floor(Config.AccentColor.R * 255),
-            g = math.floor(Config.AccentColor.G * 255),
-            b = math.floor(Config.AccentColor.B * 255)
-        },
+        theme = {r = math.floor(Config.AccentColor.R * 255), g = math.floor(Config.AccentColor.G * 255), b = math.floor(Config.AccentColor.B * 255)},
         watermark = {
             Visible = HUD_MainFrame.Visible,
-            ShowName = WatermarkState.Name,
-            ShowNickname = WatermarkState.Nickname,
-            ShowFPS = WatermarkState.FPS,
-            ShowPing = WatermarkState.Ping,
-            ShowTPS = WatermarkState.TPS,
-            ShowCoords = WatermarkState.Coords,
+            ShowName = WatermarkState.Name, ShowNickname = WatermarkState.Nickname,
+            ShowFPS = WatermarkState.FPS, ShowPing = WatermarkState.Ping,
+            ShowTPS = WatermarkState.TPS, ShowCoords = WatermarkState.Coords,
             ShowSpeed = WatermarkState.Speed
         },
-        stars = {
-            color = {
-                r = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).R * 255),
-                g = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).G * 255),
-                b = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).B * 255)
-            }
-        },
+        stars = {color = {
+            r = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).R * 255),
+            g = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).G * 255),
+            b = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).B * 255)
+        }},
         friends = FriendList,
         points = {},
         keybinds = {}
     }
     for _, k in ipairs(CONFIG_KEYS) do
         local v = getgenv()[k]
-        if type(v) == "boolean" then
-            if v then cfg.features[k] = true end
-        elseif type(v) == "number" then
-            cfg.features[k] = v
-        elseif type(v) == "string" then
-            cfg.features[k] = v
-        end
+        if type(v) == "boolean" then if v then cfg.features[k] = true end
+        elseif type(v) == "number" or type(v) == "string" then cfg.features[k] = v end
     end
     for _, p in pairs(PointsList) do
-        table.insert(cfg.points, {name = p.name, x = p.pos.X, y = p.pos.Y, z = p.pos.Z})
+        table.insert(cfg.points, {name = p.name, x = p.pos.X, y = p.pos.Y, z = p.pos.Z, visible = p.visible ~= false})
     end
-    -- Сохраняем бинды
     for id, data in pairs(KeybindData) do
-        if data.key and data.name then
-            cfg.keybinds[data.name] = data.key.Name
-        end
+        if data.key and data.name then cfg.keybinds[data.name] = data.key.Name end
     end
     return HttpService:JSONEncode(cfg)
 end
@@ -1724,11 +1998,7 @@ end
 CreateButton(ConfigSection, "Copy Config to Clipboard", function()
     local s = BuildConfigString()
     local ok = pcall(function() setclipboard(s) end)
-    if ok then
-        print("[Radioactive] Config copied! (" .. #s .. " chars)")
-    else
-        print("[Radioactive] setclipboard failed! Your executor may not support it.")
-    end
+    if ok then print("[Radioactive] Config copied! (" .. #s .. " chars)") end
 end)
 
 local LoadBoxFrame = Instance.new("Frame")
@@ -1743,7 +2013,6 @@ lbs_pad.PaddingRight = UDim.new(0, 6)
 lbs_pad.PaddingTop = UDim.new(0, 4)
 lbs_pad.PaddingBottom = UDim.new(0, 4)
 lbs_pad.Parent = LoadBoxFrame
-
 local LoadBox = Instance.new("TextBox")
 LoadBox.Size = UDim2.new(1, 0, 1, 0)
 LoadBox.BackgroundTransparency = 1
@@ -1762,26 +2031,12 @@ LoadBox.Parent = LoadBoxFrame
 
 CreateButton(ConfigSection, "Load Config from Text", function()
     local txt = LoadBox.Text
-    if not txt or txt == "" then
-        print("[Radioactive] Config empty!")
-        return
-    end
+    if not txt or txt == "" then print("[Radioactive] Config empty!") return end
     local ok, cfg = pcall(function() return HttpService:JSONDecode(txt) end)
-    if not ok or type(cfg) ~= "table" then
-        print("[Radioactive] Invalid config format!")
-        return
-    end
+    if not ok or type(cfg) ~= "table" then print("[Radioactive] Invalid config!") return end
 
-    if cfg.features then
-        for k, v in pairs(cfg.features) do
-            getgenv()[k] = v
-        end
-    end
-
-    if cfg.theme then
-        UpdateTheme(Color3.fromRGB(cfg.theme.r or 190, cfg.theme.g or 45, cfg.theme.b or 45))
-    end
-
+    if cfg.features then for k, v in pairs(cfg.features) do getgenv()[k] = v end end
+    if cfg.theme then UpdateTheme(Color3.fromRGB(cfg.theme.r or 190, cfg.theme.g or 45, cfg.theme.b or 45)) end
     if cfg.watermark then
         WatermarkState.Name = cfg.watermark.ShowName ~= false
         WatermarkState.Nickname = cfg.watermark.ShowNickname ~= false
@@ -1792,18 +2047,14 @@ CreateButton(ConfigSection, "Load Config from Text", function()
         WatermarkState.Speed = cfg.watermark.ShowSpeed ~= false
         ApplyWatermarkState()
     end
-
     if cfg.stars and cfg.stars.color then
         getgenv().StarsColor = Color3.fromRGB(cfg.stars.color.r or 255, cfg.stars.color.g or 255, cfg.stars.color.b or 255)
-        if WorldStarsFolder then
-            for _, s in ipairs(WorldStarsFolder:GetChildren()) do
-                if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
-                local l = s:FindFirstChildOfClass("PointLight")
-                if l then l.Color = getgenv().StarsColor end
-            end
+        for _, s in ipairs(WorldStarsFolder:GetChildren()) do
+            if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
+            local l = s:FindFirstChildOfClass("PointLight")
+            if l then l.Color = getgenv().StarsColor end
         end
     end
-
     if getgenv().FogEnabled then
         if getgenv().OriginalFogColor == nil then
             getgenv().OriginalFogColor = Lighting.FogColor
@@ -1814,8 +2065,6 @@ CreateButton(ConfigSection, "Load Config from Text", function()
         Lighting.FogStart = getgenv().FogStart or 0
         Lighting.FogEnd = getgenv().FogEnd or 500
     end
-
-    -- Восстанавливаем бинды
     if cfg.keybinds then
         for id, data in pairs(KeybindData) do
             local keyName = data.name and cfg.keybinds[data.name]
@@ -1824,39 +2073,42 @@ CreateButton(ConfigSection, "Load Config from Text", function()
                 if keyCode then
                     data.key = keyCode
                     data.label.Text = "[" .. keyName .. "]"
-                    data.label.TextColor3 = Color3.fromRGB(180, 180, 180)
-                end
-            else
-                -- Если в конфиге нет бинда для этой функции — сбрасываем
-                if data.name and cfg.keybinds[data.name] == nil then
-                    -- ничего, оставляем как было
+                    data.label.TextColor3 = Color3.fromRGB(120, 220, 120)
                 end
             end
         end
+        RefreshKeybindsHUD()
     end
-
     if cfg.friends then
         FriendList = cfg.friends
         SaveFriends()
-        RefreshFriendList()
+        RefreshFriendsUI()
     end
-
     if cfg.points then
-        for _, m in pairs(WorldMarkers) do m.part:Destroy() end
+        for _, m in pairs(WorldMarkers) do
+            m.spinConn:Disconnect()
+            m.model:Destroy()
+        end
         WorldMarkers = {}
         for _, df in pairs(MiniMapPointDots) do df:Destroy() end
         MiniMapPointDots = {}
+        for _, kb in pairs(KeybindData) do
+            if kb.name and kb.name:sub(1, 6) == "POINT_" then
+                kb.key = nil
+                kb.label.Text = "[Bind]"
+                kb.label.TextColor3 = Color3.fromRGB(160, 160, 160)
+            end
+        end
         PointsList = {}
         for _, p in ipairs(cfg.points) do
             PointIdCounter = PointIdCounter + 1
-            PointsList[PointIdCounter] = {id = PointIdCounter, name = p.name, pos = Vector3.new(p.x, p.y, p.z)}
+            PointsList[PointIdCounter] = {id = PointIdCounter, name = p.name, pos = Vector3.new(p.x, p.y, p.z), visible = p.visible ~= false}
         end
         SavePoints()
         RefreshWorldMarkers()
-        RefreshPointsList()
+        RefreshPointsUI()
     end
-
-    print("[Radioactive] Config loaded! Re-toggle features to apply them.")
+    print("[Radioactive] Config loaded!")
 end)
 
 -- DRAGGABLE
@@ -1879,9 +2131,7 @@ local function makeDraggable(frame, dragArea)
         end
     end)
     dragArea.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
 end
 
@@ -1889,6 +2139,7 @@ makeDraggable(HUD_MainFrame, HUD_MainFrame)
 makeDraggable(Menu_MainFrame, Header)
 makeDraggable(TargetFrame, TargetName)
 makeDraggable(MiniMapFrame, MiniMapTitle)
+makeDraggable(KeybindsHUD, KBH_Title)
 
 -- HUD UPDATE
 local frames = 0
@@ -2101,6 +2352,7 @@ RunService.RenderStepped:Connect(function(dt)
             local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(1, 0) dc.Parent = df
             MiniMapPointDots[id] = df
         end
+        df.Visible = point.visible ~= false
         df.Position = UDim2.new(0.5, clampedX - 4, 0.5, clampedY - 4)
     end
     for id, df in pairs(MiniMapPointDots) do
@@ -2115,7 +2367,7 @@ RunService.RenderStepped:Connect(function()
     local myPos = myChar.HumanoidRootPart.Position
     for id, point in pairs(PointsList) do
         local m = WorldMarkers[id]
-        if m then m.distLbl.Text = tostring(math.floor((point.pos - myPos).Magnitude)) end
+        if m then m.distLbl.Text = tostring(math.floor((point.pos - myPos).Magnitude)) .. " studs" end
     end
 end)
 
@@ -2131,4 +2383,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("Radioactive загружен! RSHIFT - меню. MMB по функции + клавиша = бинд.")
+print("Radioactive v6 загружен! RSHIFT - меню.")
