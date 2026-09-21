@@ -1,4 +1,4 @@
--- Radioactive | Expensive Style UI (Smooth Animations)
+-- Radioactive | Expensive Style UI (Smooth Fade + Keybinds)
 -- RSHIFT скрывает/показывает меню.
 
 local CoreGui = game:GetService("CoreGui")
@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Stats = game:GetService("Stats")
 local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 
 local parentGui = (gethui and gethui()) or CoreGui
@@ -25,7 +26,8 @@ local Config = {
     TextDim = Color3.fromRGB(130, 130, 130),
     Font = Enum.Font.GothamMedium,
     FontBold = Enum.Font.GothamBold,
-    FriendColor = Color3.fromRGB(80, 220, 100)
+    FriendColor = Color3.fromRGB(80, 220, 100),
+    MiniMapPlayerColor = Color3.fromRGB(60, 140, 255)
 }
 
 local ThemeElements = {}
@@ -33,13 +35,73 @@ local function RegisterThemeElement(element, type, isActiveOnly)
     table.insert(ThemeElements, {element = element, type = type or "bg", isActiveOnly = isActiveOnly or false})
 end
 
--- Smooth animation helpers
 local function Tween(obj, time, props, style, dir)
     local info = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out)
     local t = TweenService:Create(obj, info, props)
     t:Play()
     return t
 end
+
+-- ==========================================================
+-- KEYBIND SYSTEM
+-- ==========================================================
+local KeybindData = {}       -- [id] = {key, toggle, label, isHovered}
+local BindingTarget = nil    -- id текущего бинда, который ждёт клавишу
+
+-- Читаемая карта клавиш для сохранения в конфиг
+local function KeyToName(keyCode)
+    if not keyCode then return nil end
+    return keyCode.Name
+end
+local function NameToKey(name)
+    if not name then return nil end
+    return Enum.KeyCode[name]
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+
+    -- Ловим клавишу для назначения бинда
+    if BindingTarget then
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            local data = KeybindData[BindingTarget]
+            if data then
+                if input.KeyCode == Enum.KeyCode.Backspace or input.KeyCode == Enum.KeyCode.Delete or input.KeyCode == Enum.KeyCode.Escape then
+                    data.key = nil
+                    data.label.Text = ""
+                else
+                    data.key = input.KeyCode
+                    data.label.Text = "[" .. input.KeyCode.Name .. "]"
+                    data.label.TextColor3 = Color3.fromRGB(180, 180, 180)
+                end
+            end
+            BindingTarget = nil
+        end
+        return
+    end
+
+    -- MMB по строке функции — начинаем ловить клавишу
+    if input.UserInputType == Enum.UserInputType.MouseButton3 then
+        for id, data in pairs(KeybindData) do
+            if data.isHovered then
+                BindingTarget = id
+                data.label.Text = "[...]"
+                data.label.TextColor3 = Color3.fromRGB(255, 200, 0)
+                return
+            end
+        end
+    end
+
+    -- Проверяем, не нажата ли клавиша с биндом
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if UserInputService:GetFocusedTextBox() then return end
+        for _, data in pairs(KeybindData) do
+            if data.key and data.key == input.KeyCode then
+                data.toggle()
+            end
+        end
+    end
+end)
 
 -- PERSISTENT STATE
 local FriendList = {}
@@ -84,9 +146,7 @@ end
 
 LoadData()
 
--- ==========================================================
 -- HUD PANEL
--- ==========================================================
 local HUDScreen = Instance.new("ScreenGui")
 HUDScreen.Name = "RadioactiveHUD"
 HUDScreen.ResetOnSpawn = false
@@ -96,19 +156,13 @@ HUDScreen.Parent = parentGui
 
 local HUD_MainFrame = Instance.new("Frame")
 HUD_MainFrame.Size = UDim2.new(0, 650, 0, 65)
-HUD_MainFrame.Position = UDim2.new(0.5, -325, 0, -80)
+HUD_MainFrame.Position = UDim2.new(0.5, -325, 0, 20)
 HUD_MainFrame.BackgroundColor3 = Config.MainBg
 HUD_MainFrame.BackgroundTransparency = 0.1
 HUD_MainFrame.BorderSizePixel = 0
 HUD_MainFrame.Parent = HUDScreen
 local HUD_Corner = Instance.new("UICorner") HUD_Corner.CornerRadius = UDim.new(0, 8) HUD_Corner.Parent = HUD_MainFrame
 local HUD_Stroke = Instance.new("UIStroke") HUD_Stroke.Color = Color3.fromRGB(40,40,40) HUD_Stroke.Thickness = 1.5 HUD_Stroke.Parent = HUD_MainFrame
-
--- Плавное появление HUD
-task.spawn(function()
-    task.wait(0.15)
-    Tween(HUD_MainFrame, 0.5, {Position = UDim2.new(0.5, -325, 0, 20)}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-end)
 
 local function createStatBlock(parent, iconId, textStr, isAccent)
     local Block = Instance.new("Frame")
@@ -203,9 +257,7 @@ local function ApplyWatermarkState()
     end
 end
 
--- ==========================================================
 -- AUX SCREEN
--- ==========================================================
 local AuxScreen = Instance.new("ScreenGui")
 AuxScreen.Name = "RadioactiveAux"
 AuxScreen.ResetOnSpawn = false
@@ -213,17 +265,18 @@ AuxScreen.IgnoreGuiInset = true
 AuxScreen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 AuxScreen.Parent = parentGui
 
--- Target HUD (начальное состояние: скрыто, чуть сдвинуто влево)
+-- TARGET HUD
 local TargetFrame = Instance.new("Frame")
 TargetFrame.Size = UDim2.new(0, 220, 0, 65)
-TargetFrame.Position = UDim2.new(0, -240, 0, 200)
+TargetFrame.AnchorPoint = Vector2.new(0.5, 0)
+TargetFrame.Position = UDim2.new(0.5, 0, 0.5, 60)
 TargetFrame.BackgroundColor3 = Config.MainBg
-TargetFrame.BackgroundTransparency = 0.15
+TargetFrame.BackgroundTransparency = 1
 TargetFrame.BorderSizePixel = 0
 TargetFrame.Visible = false
 TargetFrame.Parent = AuxScreen
 local TFC = Instance.new("UICorner") TFC.CornerRadius = UDim.new(0, 8) TFC.Parent = TargetFrame
-local TFS = Instance.new("UIStroke") TFS.Color = Color3.fromRGB(40,40,40) TFS.Thickness = 1.5 TFS.Parent = TargetFrame
+local TFS = Instance.new("UIStroke") TFS.Color = Color3.fromRGB(40,40,40) TFS.Thickness = 1.5 TFS.Transparency = 1 TFS.Parent = TargetFrame
 
 local TargetName = Instance.new("TextLabel")
 TargetName.Size = UDim2.new(1, -20, 0, 20)
@@ -231,6 +284,7 @@ TargetName.Position = UDim2.new(0, 10, 0, 8)
 TargetName.BackgroundTransparency = 1
 TargetName.Text = "None"
 TargetName.TextColor3 = Config.TextColor
+TargetName.TextTransparency = 1
 TargetName.Font = Config.FontBold
 TargetName.TextSize = 14
 TargetName.TextXAlignment = Enum.TextXAlignment.Left
@@ -240,11 +294,13 @@ local TargetHPBarBg = Instance.new("Frame")
 TargetHPBarBg.Size = UDim2.new(1, -20, 0, 8)
 TargetHPBarBg.Position = UDim2.new(0, 10, 0, 35)
 TargetHPBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TargetHPBarBg.BackgroundTransparency = 1
 TargetHPBarBg.Parent = TargetFrame
 local THBC = Instance.new("UICorner") THBC.CornerRadius = UDim.new(1, 0) THBC.Parent = TargetHPBarBg
 local TargetHPBar = Instance.new("Frame")
 TargetHPBar.Size = UDim2.new(1, 0, 1, 0)
 TargetHPBar.BackgroundColor3 = Color3.fromRGB(50, 220, 100)
+TargetHPBar.BackgroundTransparency = 1
 TargetHPBar.Parent = TargetHPBarBg
 local THBC2 = Instance.new("UICorner") THBC2.CornerRadius = UDim.new(1, 0) THBC2.Parent = TargetHPBar
 
@@ -254,22 +310,23 @@ TargetHPText.Position = UDim2.new(0, 10, 0, 48)
 TargetHPText.BackgroundTransparency = 1
 TargetHPText.Text = "0 / 0"
 TargetHPText.TextColor3 = Config.TextDim
+TargetHPText.TextTransparency = 1
 TargetHPText.Font = Config.Font
 TargetHPText.TextSize = 11
 TargetHPText.TextXAlignment = Enum.TextXAlignment.Left
 TargetHPText.Parent = TargetFrame
 
--- MiniMap (начальное состояние: скрыто, сдвинуто)
+-- MiniMap
 local MINIMAP_RANGE = 1000
 local GRID_SPACING = 200
 
 local MiniMapFrame = Instance.new("Frame")
 MiniMapFrame.Size = UDim2.new(0, 220, 0, 220)
-MiniMapFrame.Position = UDim2.new(0, -240, 0, 280)
+MiniMapFrame.Position = UDim2.new(0, 20, 0, 280)
 MiniMapFrame.BackgroundColor3 = Config.MainBg
 MiniMapFrame.BackgroundTransparency = 0.15
 MiniMapFrame.BorderSizePixel = 0
-MiniMapFrame.Visible = false
+MiniMapFrame.Visible = true
 MiniMapFrame.Parent = AuxScreen
 local MFC = Instance.new("UICorner") MFC.CornerRadius = UDim.new(0, 8) MFC.Parent = MiniMapFrame
 local MFS = Instance.new("UIStroke") MFS.Color = Color3.fromRGB(40,40,40) MFS.Thickness = 1.5 MFS.Parent = MiniMapFrame
@@ -321,10 +378,11 @@ for i = 1, 15 do
     table.insert(MiniMapGridLines, {frame = line, isVertical = false})
 end
 
+-- Синий кружок игрока (не зависит от темы)
 local MiniMapPlayerDot = Instance.new("Frame")
 MiniMapPlayerDot.Size = UDim2.new(0, 10, 0, 10)
 MiniMapPlayerDot.Position = UDim2.new(0.5, -5, 0.5, -5)
-MiniMapPlayerDot.BackgroundColor3 = Config.AccentColor
+MiniMapPlayerDot.BackgroundColor3 = Config.MiniMapPlayerColor
 MiniMapPlayerDot.ZIndex = 5
 MiniMapPlayerDot.Parent = MiniMapArea
 local MPDC = Instance.new("UICorner") MPDC.CornerRadius = UDim.new(1, 0) MPDC.Parent = MiniMapPlayerDot
@@ -332,9 +390,7 @@ local MPDC = Instance.new("UICorner") MPDC.CornerRadius = UDim.new(1, 0) MPDC.Pa
 local MiniMapDots = {}
 local MiniMapPointDots = {}
 
--- ==========================================================
--- MENU (изначально скрыто + уменьшено + прозрачное)
--- ==========================================================
+-- MENU
 local MenuScreen = Instance.new("ScreenGui")
 MenuScreen.Name = "RadioactiveMenu"
 MenuScreen.ResetOnSpawn = false
@@ -344,40 +400,33 @@ MenuScreen.Parent = parentGui
 
 local Menu_MainFrame = Instance.new("Frame")
 Menu_MainFrame.Size = UDim2.new(0, 800, 0, 520)
-Menu_MainFrame.Position = UDim2.new(0.5, -400, 0.5, -260)
+Menu_MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+Menu_MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 Menu_MainFrame.BackgroundColor3 = Config.MainBg
 Menu_MainFrame.BackgroundTransparency = 0.1
 Menu_MainFrame.BorderSizePixel = 0
 Menu_MainFrame.Visible = false
-Menu_MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-Menu_MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 Menu_MainFrame.Parent = MenuScreen
 local Menu_Corner = Instance.new("UICorner") Menu_Corner.CornerRadius = UDim.new(0, 10) Menu_Corner.Parent = Menu_MainFrame
 local Menu_Stroke = Instance.new("UIStroke") Menu_Stroke.Color = Color3.fromRGB(40,40,40) Menu_Stroke.Thickness = 1.5 Menu_Stroke.Parent = Menu_MainFrame
 
--- Плавное открытие меню
 local function OpenMenu()
     Menu_MainFrame.Visible = true
-    Menu_MainFrame.Size = UDim2.new(0, 740, 0, 480)
-    Menu_MainFrame.BackgroundTransparency = 0.55
-    Tween(Menu_MainFrame, 0.35, {
-        Size = UDim2.new(0, 800, 0, 520),
-        BackgroundTransparency = 0.1
-    }, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    Menu_MainFrame.BackgroundTransparency = 1
+    Menu_Stroke.Transparency = 1
+    Tween(Menu_MainFrame, 0.35, {BackgroundTransparency = 0.1}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    Tween(Menu_Stroke, 0.35, {Transparency = 0})
 end
 
 local function CloseMenu()
-    Tween(Menu_MainFrame, 0.25, {
-        Size = UDim2.new(0, 740, 0, 480),
-        BackgroundTransparency = 0.55
-    }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+    Tween(Menu_MainFrame, 0.25, {BackgroundTransparency = 1}, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+    Tween(Menu_Stroke, 0.25, {Transparency = 1})
     task.delay(0.25, function()
         if not Menu_MainFrame.Visible then return end
         Menu_MainFrame.Visible = false
     end)
 end
 
--- Header
 local Header = Instance.new("Frame")
 Header.Size = UDim2.new(1, 0, 0, 40)
 Header.BackgroundColor3 = Config.SidebarBg
@@ -424,7 +473,6 @@ local function CreateSection(parent, titleText)
     Section.AutomaticSize = Enum.AutomaticSize.Y
     Section.BackgroundColor3 = Config.CardBg
     Section.BorderSizePixel = 0
-    Section.BackgroundTransparency = 1
     Section.Parent = parent
     local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 8) c.Parent = Section
     local s = Instance.new("UIStroke") s.Color = Color3.fromRGB(40,40,40) s.Thickness = 1 s.Parent = Section
@@ -440,21 +488,18 @@ local function CreateSection(parent, titleText)
     t.TextXAlignment = Enum.TextXAlignment.Left
     t.LayoutOrder = 1
     t.Parent = Section
-    -- Плавное появление
-    task.spawn(function()
-        task.wait(0.05)
-        Tween(Section, 0.4, {BackgroundTransparency = 0}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-    end)
     return Section
 end
 
+-- CreateToggle С БИНДАМИ
 local function CreateToggle(parent, textStr, defaultState, callback)
     local F = Instance.new("Frame")
     F.Size = UDim2.new(1, 0, 0, 25)
     F.BackgroundTransparency = 1
     F.Parent = parent
+
     local L = Instance.new("TextLabel")
-    L.Size = UDim2.new(0.7, 0, 1, 0)
+    L.Size = UDim2.new(1, -140, 1, 0)
     L.BackgroundTransparency = 1
     L.Text = textStr
     L.TextColor3 = Config.TextColor
@@ -462,6 +507,19 @@ local function CreateToggle(parent, textStr, defaultState, callback)
     L.TextSize = 14
     L.TextXAlignment = Enum.TextXAlignment.Left
     L.Parent = F
+
+    -- Метка бинда
+    local BindLabel = Instance.new("TextLabel")
+    BindLabel.Size = UDim2.new(0, 45, 1, 0)
+    BindLabel.Position = UDim2.new(1, -90, 0, 0)
+    BindLabel.BackgroundTransparency = 1
+    BindLabel.Text = ""
+    BindLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    BindLabel.Font = Config.Font
+    BindLabel.TextSize = 11
+    BindLabel.TextXAlignment = Enum.TextXAlignment.Center
+    BindLabel.Parent = F
+
     local B = Instance.new("Frame")
     B.Size = UDim2.new(0, 36, 0, 20)
     B.Position = UDim2.new(1, -36, 0.5, -10)
@@ -475,18 +533,37 @@ local function CreateToggle(parent, textStr, defaultState, callback)
     K.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     K.Parent = B
     local KC = Instance.new("UICorner") KC.CornerRadius = UDim.new(1, 0) KC.Parent = K
+
     local state = defaultState
+
+    local function toggleValue()
+        state = not state
+        Tween(B, 0.25, {BackgroundColor3 = state and Config.AccentColor or Color3.fromRGB(60,60,60)})
+        Tween(K, 0.25, {Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)})
+        if callback then callback(state) end
+    end
+
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.BackgroundTransparency = 1
     btn.Text = ""
     btn.Parent = F
-    btn.MouseButton1Click:Connect(function()
-        state = not state
-        Tween(B, 0.25, {BackgroundColor3 = state and Config.AccentColor or Color3.fromRGB(60,60,60)}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-        Tween(K, 0.25, {Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-        if callback then callback(state) end
-    end)
+    btn.MouseButton1Click:Connect(toggleValue)
+
+    -- Регистрация бинда (hover на всю строку)
+    local bindData = {
+        key = nil,
+        toggle = toggleValue,
+        label = BindLabel,
+        isHovered = false,
+        name = textStr
+    }
+    F.MouseEnter:Connect(function() bindData.isHovered = true end)
+    F.MouseLeave:Connect(function() bindData.isHovered = false end)
+
+    local id = "toggle_" .. tostring(textStr)
+    KeybindData[id] = bindData
+
     return F
 end
 
@@ -697,9 +774,13 @@ local WMSection = CreateSection(HUDContent, "Watermark (Top HUD)")
 CreateToggle(WMSection, "Watermark Enabled", true, function(s)
     if s then
         HUD_MainFrame.Visible = true
-        Tween(HUD_MainFrame, 0.4, {Position = UDim2.new(0.5, -325, 0, 20)}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        HUD_MainFrame.BackgroundTransparency = 1
+        HUD_Stroke.Transparency = 1
+        Tween(HUD_MainFrame, 0.4, {BackgroundTransparency = 0.1})
+        Tween(HUD_Stroke, 0.4, {Transparency = 0})
     else
-        Tween(HUD_MainFrame, 0.3, {Position = UDim2.new(0.5, -325, 0, -80)}, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+        Tween(HUD_MainFrame, 0.3, {BackgroundTransparency = 1})
+        Tween(HUD_Stroke, 0.3, {Transparency = 1})
         task.delay(0.3, function() HUD_MainFrame.Visible = false end)
     end
 end)
@@ -715,7 +796,8 @@ local TargetHUDSection = CreateSection(HUDContent, "Target HUD")
 CreateToggle(TargetHUDSection, "Target HUD Enabled", true, function(s)
     getgenv().TargetHUDEnabled = s
     if not s then
-        Tween(TargetFrame, 0.25, {Position = UDim2.new(0, -240, 0, 200)}, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+        Tween(TargetFrame, 0.25, {BackgroundTransparency = 1})
+        Tween(TFS, 0.25, {Transparency = 1})
         task.delay(0.25, function() TargetFrame.Visible = false end)
     end
 end)
@@ -725,19 +807,15 @@ local MiniMapSection = CreateSection(HUDContent, "MiniMap")
 CreateToggle(MiniMapSection, "MiniMap Enabled", true, function(s)
     if s then
         MiniMapFrame.Visible = true
-        MiniMapFrame.Position = UDim2.new(0, -240, 0, 280)
-        Tween(MiniMapFrame, 0.4, {Position = UDim2.new(0, 20, 0, 280)}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        MiniMapFrame.BackgroundTransparency = 1
+        MFS.Transparency = 1
+        Tween(MiniMapFrame, 0.4, {BackgroundTransparency = 0.15})
+        Tween(MFS, 0.4, {Transparency = 0})
     else
-        Tween(MiniMapFrame, 0.3, {Position = UDim2.new(0, -240, 0, 280)}, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+        Tween(MiniMapFrame, 0.3, {BackgroundTransparency = 1})
+        Tween(MFS, 0.3, {Transparency = 1})
         task.delay(0.3, function() MiniMapFrame.Visible = false end)
     end
-end)
--- Начальное появление миникарты
-task.spawn(function()
-    task.wait(0.4)
-    MiniMapFrame.Visible = true
-    MiniMapFrame.Position = UDim2.new(0, -240, 0, 280)
-    Tween(MiniMapFrame, 0.5, {Position = UDim2.new(0, 20, 0, 280)}, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 end)
 
 -- COMBAT
@@ -896,6 +974,69 @@ CreateToggle(MovementNoclip, "Noclip Enabled", false, function(state)
     end
 end)
 
+local MovementStrafe = CreateSection(MovementContent, "Strafe")
+getgenv().StrafeEnabled = false
+getgenv().StrafePower = 30
+CreateToggle(MovementStrafe, "Strafe (Minecraft Style)", false, function(state)
+    getgenv().StrafeEnabled = state
+    if state then
+        getgenv().StrafeConnection = RunService.RenderStepped:Connect(function()
+            local char = LocalPlayer.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
+            local hum = char.Humanoid
+            local hrp = char.HumanoidRootPart
+            if hum.FloorMaterial == Enum.Material.Air then return end
+            local moveDir = hum.MoveDirection
+            if moveDir.Magnitude > 0.1 then
+                local side = moveDir.Unit:Cross(Vector3.new(0,1,0))
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                    hrp.Velocity = hrp.Velocity + side * (getgenv().StrafePower or 30)
+                end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                    hrp.Velocity = hrp.Velocity - side * (getgenv().StrafePower or 30)
+                end
+            end
+        end)
+    else
+        if getgenv().StrafeConnection then getgenv().StrafeConnection:Disconnect() end
+    end
+end)
+CreateSlider(MovementStrafe, "Strafe Power", 10, 200, 30, function(v) getgenv().StrafePower = v end)
+
+local MovementBhop = CreateSection(MovementContent, "Bunny Hop")
+CreateToggle(MovementBhop, "Bunny Hop (Hold Space)", false, function(state)
+    getgenv().BhopEnabled = state
+    if state then
+        getgenv().BhopConnection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if not char or not char:FindFirstChild("Humanoid") then return end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) and char.Humanoid.FloorMaterial ~= Enum.Material.Air then
+                char.Humanoid.Jump = true
+            end
+        end)
+    else
+        if getgenv().BhopConnection then getgenv().BhopConnection:Disconnect() end
+    end
+end)
+
+local MovementWater = CreateSection(MovementContent, "Walk on Water")
+CreateToggle(MovementWater, "Walk on Water", false, function(state)
+    getgenv().WaterWalkEnabled = state
+    if state then
+        getgenv().WaterWalkConnection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local hrp = char.HumanoidRootPart
+                if hrp.Position.Y < 5 then
+                    hrp.CFrame = hrp.CFrame + Vector3.new(0, 0.5, 0)
+                end
+            end
+        end)
+    else
+        if getgenv().WaterWalkConnection then getgenv().WaterWalkConnection:Disconnect() end
+    end
+end)
+
 -- PLAYER
 local PlayerInfinite = CreateSection(PlayerContent, "Infinite Jump")
 CreateToggle(PlayerInfinite, "Infinite Jump", false, function(state)
@@ -956,22 +1097,45 @@ CreateButton(PlayerReset, "Reset Character", function()
     if c and c:FindFirstChild("Humanoid") then c.Humanoid.Health = 0 end
 end)
 
+local PlayerProximity = CreateSection(PlayerContent, "Auto Interact")
+CreateToggle(PlayerProximity, "Auto Interact (Proximity)", false, function(state)
+    getgenv().AutoInteractEnabled = state
+    if state then
+        getgenv().AutoInteractConnection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("ProximityPrompt") and obj.Enabled then
+                    local part = obj.Parent
+                    if part and part:IsA("BasePart") then
+                        local dist = (part.Position - char.HumanoidRootPart.Position).Magnitude
+                        if dist < (obj.MaxActivationDistance or 10) then
+                            pcall(function() fireproximityprompt(obj) end)
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if getgenv().AutoInteractConnection then getgenv().AutoInteractConnection:Disconnect() end
+    end
+end)
+
 -- RENDER
 local RenderFullbright = CreateSection(RenderContent, "Fullbright")
 CreateToggle(RenderFullbright, "Fullbright Enabled", false, function(state)
     getgenv().FullbrightEnabled = state
-    local L = game:GetService("Lighting")
     if state then
-        getgenv().OriginalAmbient = L.Ambient
-        getgenv().OriginalOutdoorAmbient = L.OutdoorAmbient
-        getgenv().OriginalBrightness = L.Brightness
-        L.Ambient = Color3.fromRGB(255,255,255)
-        L.OutdoorAmbient = Color3.fromRGB(255,255,255)
-        L.Brightness = 2
+        getgenv().OriginalAmbient = Lighting.Ambient
+        getgenv().OriginalOutdoorAmbient = Lighting.OutdoorAmbient
+        getgenv().OriginalBrightness = Lighting.Brightness
+        Lighting.Ambient = Color3.fromRGB(255,255,255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255,255,255)
+        Lighting.Brightness = 2
     else
-        L.Ambient = getgenv().OriginalAmbient or Color3.fromRGB(0,0,0)
-        L.OutdoorAmbient = getgenv().OriginalOutdoorAmbient or Color3.fromRGB(0,0,0)
-        L.Brightness = getgenv().OriginalBrightness or 1
+        Lighting.Ambient = getgenv().OriginalAmbient or Color3.fromRGB(0,0,0)
+        Lighting.OutdoorAmbient = getgenv().OriginalOutdoorAmbient or Color3.fromRGB(0,0,0)
+        Lighting.Brightness = getgenv().OriginalBrightness or 1
     end
 end)
 
@@ -1017,18 +1181,150 @@ CreateSlider(RenderFOV, "Field of View", 70, 180, 70, function(v)
     if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = v end
 end)
 
+local RenderFog = CreateSection(RenderContent, "Custom Fog")
+getgenv().FogR = 200
+getgenv().FogG = 200
+getgenv().FogB = 255
+getgenv().FogStart = 0
+getgenv().FogEnd = 500
+getgenv().FogEnabled = false
+
+local function ApplyFog()
+    if not getgenv().FogEnabled then
+        Lighting.FogColor = getgenv().OriginalFogColor or Color3.fromRGB(192,192,192)
+        Lighting.FogStart = getgenv().OriginalFogStart or 0
+        Lighting.FogEnd = getgenv().OriginalFogEnd or 100000
+        return
+    end
+    Lighting.FogColor = Color3.fromRGB(getgenv().FogR, getgenv().FogG, getgenv().FogB)
+    Lighting.FogStart = getgenv().FogStart
+    Lighting.FogEnd = getgenv().FogEnd
+end
+
+CreateToggle(RenderFog, "Custom Fog Enabled", false, function(state)
+    if state then
+        getgenv().OriginalFogColor = Lighting.FogColor
+        getgenv().OriginalFogStart = Lighting.FogStart
+        getgenv().OriginalFogEnd = Lighting.FogEnd
+    end
+    getgenv().FogEnabled = state
+    ApplyFog()
+end)
+
+CreateSlider(RenderFog, "Red", 0, 255, 200, function(v) getgenv().FogR = v ApplyFog() end)
+CreateSlider(RenderFog, "Green", 0, 255, 200, function(v) getgenv().FogG = v ApplyFog() end)
+CreateSlider(RenderFog, "Blue", 0, 255, 255, function(v) getgenv().FogB = v ApplyFog() end)
+CreateSlider(RenderFog, "Fog Start", 0, 1000, 0, function(v) getgenv().FogStart = v ApplyFog() end)
+CreateSlider(RenderFog, "Fog End", 50, 5000, 500, function(v) getgenv().FogEnd = v ApplyFog() end)
+
 local RenderNoFog = CreateSection(RenderContent, "No Fog")
 CreateToggle(RenderNoFog, "No Fog", false, function(state)
     getgenv().NoFogEnabled = state
-    local L = game:GetService("Lighting")
     if state then
-        getgenv().OriginalFogEnd = L.FogEnd
-        getgenv().OriginalFogStart = L.FogStart
-        L.FogEnd = 100000
-        L.FogStart = 100000
+        getgenv().OriginalFogEnd = Lighting.FogEnd
+        getgenv().OriginalFogStart = Lighting.FogStart
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 100000
     else
-        L.FogEnd = getgenv().OriginalFogEnd or 100000
-        L.FogStart = getgenv().OriginalFogStart or 0
+        Lighting.FogEnd = getgenv().OriginalFogEnd or 100000
+        Lighting.FogStart = getgenv().OriginalFogStart or 0
+    end
+end)
+
+local RenderWorld = CreateSection(RenderContent, "World Customizer")
+
+local WorldStarsFolder = Instance.new("Folder")
+WorldStarsFolder.Name = "RadioactiveStars"
+WorldStarsFolder.Parent = workspace
+
+getgenv().StarsEnabled = false
+getgenv().StarsRate = 35
+getgenv().StarsColor = Color3.fromRGB(255, 255, 255)
+getgenv().StarsSize = 1.5
+getgenv().StarsFallSpeed = 12
+
+local function SpawnStar()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local center = char.HumanoidRootPart.Position
+    local offset = Vector3.new(
+        math.random(-200, 200),
+        math.random(150, 300),
+        math.random(-200, 200)
+    )
+    local spawnPos = center + offset
+
+    local star = Instance.new("Part")
+    star.Shape = Enum.PartType.Ball
+    star.Size = Vector3.new(getgenv().StarsSize or 1.5, getgenv().StarsSize or 1.5, getgenv().StarsSize or 1.5)
+    star.Position = spawnPos
+    star.Anchored = false
+    star.CanCollide = false
+    star.Material = Enum.Material.Neon
+    star.Color = getgenv().StarsColor or Color3.fromRGB(255,255,255)
+    star.Transparency = 0.1
+    star.Parent = WorldStarsFolder
+
+    local light = Instance.new("PointLight")
+    light.Brightness = 3
+    light.Range = 15
+    light.Color = getgenv().StarsColor or Color3.fromRGB(255,255,255)
+    light.Parent = star
+
+    star.AssemblyLinearVelocity = Vector3.new(0, -(getgenv().StarsFallSpeed or 12), 0)
+
+    star.Touched:Connect(function()
+        star:Destroy()
+    end)
+
+    task.delay(30, function()
+        if star and star.Parent then star:Destroy() end
+    end)
+end
+
+CreateToggle(RenderWorld, "Falling Stars", false, function(state)
+    getgenv().StarsEnabled = state
+    if state then
+        getgenv().StarsThread = task.spawn(function()
+            while getgenv().StarsEnabled do
+                for i = 1, math.max(1, math.floor(getgenv().StarsRate or 35)) do
+                    SpawnStar()
+                    task.wait(1 / (getgenv().StarsRate or 35))
+                end
+            end
+        end)
+    else
+        if getgenv().StarsThread then task.cancel(getgenv().StarsThread) end
+        WorldStarsFolder:ClearAllChildren()
+    end
+end)
+
+CreateSlider(RenderWorld, "Stars Rate (per sec)", 1, 100, 35, function(v) getgenv().StarsRate = v end)
+CreateSlider(RenderWorld, "Stars Size x10", 5, 50, 15, function(v) getgenv().StarsSize = v / 10 end)
+CreateSlider(RenderWorld, "Fall Speed", 3, 50, 12, function(v) getgenv().StarsFallSpeed = v end)
+
+CreateButton(RenderWorld, "Stars Color: White", function()
+    getgenv().StarsColor = Color3.fromRGB(255, 255, 255)
+    for _, s in ipairs(WorldStarsFolder:GetChildren()) do
+        if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
+        local l = s:FindFirstChildOfClass("PointLight")
+        if l then l.Color = getgenv().StarsColor end
+    end
+end)
+CreateButton(RenderWorld, "Stars Color: Radioactive Red", function()
+    getgenv().StarsColor = Color3.fromRGB(255, 60, 60)
+    for _, s in ipairs(WorldStarsFolder:GetChildren()) do
+        if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
+        local l = s:FindFirstChildOfClass("PointLight")
+        if l then l.Color = getgenv().StarsColor end
+    end
+end)
+CreateButton(RenderWorld, "Stars Color: Cyan", function()
+    getgenv().StarsColor = Color3.fromRGB(80, 220, 255)
+    for _, s in ipairs(WorldStarsFolder:GetChildren()) do
+        if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
+        local l = s:FindFirstChildOfClass("PointLight")
+        if l then l.Color = getgenv().StarsColor end
     end
 end)
 
@@ -1058,18 +1354,55 @@ end)
 local MiscFPSBoost = CreateSection(MiscContent, "FPS Boost")
 CreateToggle(MiscFPSBoost, "FPS Boost", false, function(state)
     getgenv().FPSBoostEnabled = state
-    local L = game:GetService("Lighting")
     if state then
-        getgenv().OriginalGlobalShadows = L.GlobalShadows
-        L.GlobalShadows = false
+        getgenv().OriginalGlobalShadows = Lighting.GlobalShadows
+        getgenv().OriginalQualityLevel = Lighting.QualityLevel
+        Lighting.GlobalShadows = false
+        Lighting.QualityLevel = 1
     else
-        L.GlobalShadows = getgenv().OriginalGlobalShadows or true
+        Lighting.GlobalShadows = getgenv().OriginalGlobalShadows or true
+        Lighting.QualityLevel = getgenv().OriginalQualityLevel or 21
     end
 end)
 
--- ==========================================================
+local MiscAntiFling = CreateSection(MiscContent, "Anti Fling")
+CreateToggle(MiscAntiFling, "Anti Fling", false, function(state)
+    getgenv().AntiFlingEnabled = state
+    if state then
+        getgenv().AntiFlingConnection = RunService.Heartbeat:Connect(function()
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local vel = char.HumanoidRootPart.AssemblyLinearVelocity
+                if vel.Magnitude > 200 then
+                    char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                end
+            end
+        end)
+    else
+        if getgenv().AntiFlingConnection then getgenv().AntiFlingConnection:Disconnect() end
+    end
+end)
+
+local MiscClickTP = CreateSection(MiscContent, "Click Teleport")
+CreateToggle(MiscClickTP, "Click Teleport (Ctrl+Click)", false, function(state)
+    getgenv().ClickTPEnabled = state
+end)
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if not getgenv().ClickTPEnabled then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        local mouse = LocalPlayer:GetMouse()
+        local target = mouse.Hit
+        if target then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 3, 0))
+            end
+        end
+    end
+end)
+
 -- FRIENDS TAB
--- ==========================================================
 local RefreshFriendList
 
 local AddFriendSection = CreateSection(FriendsContent, "Add Friend")
@@ -1129,9 +1462,7 @@ end)
 
 RefreshFriendList()
 
--- ==========================================================
 -- POINTS TAB
--- ==========================================================
 local RefreshWorldMarkers, RefreshPointsList
 
 local SetPointSection = CreateSection(PointsContent, "Set Point")
@@ -1294,9 +1625,7 @@ end)
 RefreshWorldMarkers()
 RefreshPointsList()
 
--- ==========================================================
 -- THEME
--- ==========================================================
 local ThemeSection = CreateSection(ThemeContent, "Accent Color (RGB)")
 function UpdateTheme(newColor)
     Config.AccentColor = newColor
@@ -1316,45 +1645,90 @@ function UpdateTheme(newColor)
         TabIndicators[idx].BackgroundColor3 = newColor
     end
     for _, s in ipairs(TabContents) do s.ScrollBarImageColor3 = newColor end
-    MiniMapPlayerDot.BackgroundColor3 = newColor
 end
 CreateSlider(ThemeSection, "Red", 0, 255, 190, function(v) UpdateTheme(Color3.fromRGB(v, math.floor(Config.AccentColor.G*255), math.floor(Config.AccentColor.B*255))) end)
 CreateSlider(ThemeSection, "Green", 0, 255, 45, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), v, math.floor(Config.AccentColor.B*255))) end)
 CreateSlider(ThemeSection, "Blue", 0, 255, 45, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), math.floor(Config.AccentColor.G*255), v)) end)
 
 -- ==========================================================
--- CONFIGURATIONS
+-- CONFIGURATIONS (с сохранением биндов)
 -- ==========================================================
 local ConfigSection = CreateSection(ConfigContent, "Config Management")
+
 local CONFIG_KEYS = {
     "AimbotEnabled", "AimbotFOV", "AimbotTarget", "TeamCheck", "WallCheck",
-    "HitboxEnabled", "HitboxSize", "SpeedEnabled", "WalkSpeed",
-    "FlyEnabled", "FlySpeed", "NoclipEnabled",
-    "InfJumpEnabled", "AntiAFKEnabled", "GodModeEnabled",
+    "HitboxEnabled", "HitboxSize",
+    "SpeedEnabled", "WalkSpeed", "FlyEnabled", "FlySpeed",
+    "NoclipEnabled", "StrafeEnabled", "StrafePower",
+    "BhopEnabled", "WaterWalkEnabled",
+    "InfJumpEnabled", "AntiAFKEnabled", "GodModeEnabled", "AutoInteractEnabled",
     "FullbrightEnabled", "ESPEnabled", "NoFogEnabled",
-    "FPSBoostEnabled"
+    "FogEnabled", "FogR", "FogG", "FogB", "FogStart", "FogEnd",
+    "StarsEnabled", "StarsRate", "StarsSize", "StarsFallSpeed",
+    "FPSBoostEnabled", "AntiFlingEnabled", "ClickTPEnabled"
 }
 
 local function BuildConfigString()
-    local cfg = { version = 1, timestamp = os.time(), features = {}, theme = {
-        r = math.floor(Config.AccentColor.R * 255),
-        g = math.floor(Config.AccentColor.G * 255),
-        b = math.floor(Config.AccentColor.B * 255)
-    }, watermark = WatermarkState, friends = FriendList, points = {}}
+    local cfg = {
+        version = 2,
+        timestamp = os.time(),
+        features = {},
+        theme = {
+            r = math.floor(Config.AccentColor.R * 255),
+            g = math.floor(Config.AccentColor.G * 255),
+            b = math.floor(Config.AccentColor.B * 255)
+        },
+        watermark = {
+            Visible = HUD_MainFrame.Visible,
+            ShowName = WatermarkState.Name,
+            ShowNickname = WatermarkState.Nickname,
+            ShowFPS = WatermarkState.FPS,
+            ShowPing = WatermarkState.Ping,
+            ShowTPS = WatermarkState.TPS,
+            ShowCoords = WatermarkState.Coords,
+            ShowSpeed = WatermarkState.Speed
+        },
+        stars = {
+            color = {
+                r = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).R * 255),
+                g = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).G * 255),
+                b = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).B * 255)
+            }
+        },
+        friends = FriendList,
+        points = {},
+        keybinds = {}
+    }
     for _, k in ipairs(CONFIG_KEYS) do
         local v = getgenv()[k]
         if type(v) == "boolean" then
             if v then cfg.features[k] = true end
-        elseif type(v) == "number" or type(v) == "string" then cfg.features[k] = v end
+        elseif type(v) == "number" then
+            cfg.features[k] = v
+        elseif type(v) == "string" then
+            cfg.features[k] = v
+        end
     end
-    for _, p in pairs(PointsList) do table.insert(cfg.points, {name = p.name, x = p.pos.X, y = p.pos.Y, z = p.pos.Z}) end
+    for _, p in pairs(PointsList) do
+        table.insert(cfg.points, {name = p.name, x = p.pos.X, y = p.pos.Y, z = p.pos.Z})
+    end
+    -- Сохраняем бинды
+    for id, data in pairs(KeybindData) do
+        if data.key and data.name then
+            cfg.keybinds[data.name] = data.key.Name
+        end
+    end
     return HttpService:JSONEncode(cfg)
 end
 
 CreateButton(ConfigSection, "Copy Config to Clipboard", function()
     local s = BuildConfigString()
-    pcall(function() setclipboard(s) end)
-    print("[Radioactive] Config copied! (" .. #s .. " chars)")
+    local ok = pcall(function() setclipboard(s) end)
+    if ok then
+        print("[Radioactive] Config copied! (" .. #s .. " chars)")
+    else
+        print("[Radioactive] setclipboard failed! Your executor may not support it.")
+    end
 end)
 
 local LoadBoxFrame = Instance.new("Frame")
@@ -1369,6 +1743,7 @@ lbs_pad.PaddingRight = UDim.new(0, 6)
 lbs_pad.PaddingTop = UDim.new(0, 4)
 lbs_pad.PaddingBottom = UDim.new(0, 4)
 lbs_pad.Parent = LoadBoxFrame
+
 local LoadBox = Instance.new("TextBox")
 LoadBox.Size = UDim2.new(1, 0, 1, 0)
 LoadBox.BackgroundTransparency = 1
@@ -1387,13 +1762,85 @@ LoadBox.Parent = LoadBoxFrame
 
 CreateButton(ConfigSection, "Load Config from Text", function()
     local txt = LoadBox.Text
-    if not txt or txt == "" then print("[Radioactive] Config empty!") return end
+    if not txt or txt == "" then
+        print("[Radioactive] Config empty!")
+        return
+    end
     local ok, cfg = pcall(function() return HttpService:JSONDecode(txt) end)
-    if not ok or type(cfg) ~= "table" then print("[Radioactive] Invalid config!") return end
-    if cfg.features then for k, v in pairs(cfg.features) do getgenv()[k] = v end end
-    if cfg.theme then UpdateTheme(Color3.fromRGB(cfg.theme.r or 190, cfg.theme.g or 45, cfg.theme.b or 45)) end
-    if cfg.watermark then for k, v in pairs(cfg.watermark) do WatermarkState[k] = v end ApplyWatermarkState() end
-    if cfg.friends then FriendList = cfg.friends SaveFriends() RefreshFriendList() end
+    if not ok or type(cfg) ~= "table" then
+        print("[Radioactive] Invalid config format!")
+        return
+    end
+
+    if cfg.features then
+        for k, v in pairs(cfg.features) do
+            getgenv()[k] = v
+        end
+    end
+
+    if cfg.theme then
+        UpdateTheme(Color3.fromRGB(cfg.theme.r or 190, cfg.theme.g or 45, cfg.theme.b or 45))
+    end
+
+    if cfg.watermark then
+        WatermarkState.Name = cfg.watermark.ShowName ~= false
+        WatermarkState.Nickname = cfg.watermark.ShowNickname ~= false
+        WatermarkState.FPS = cfg.watermark.ShowFPS ~= false
+        WatermarkState.Ping = cfg.watermark.ShowPing ~= false
+        WatermarkState.TPS = cfg.watermark.ShowTPS ~= false
+        WatermarkState.Coords = cfg.watermark.ShowCoords ~= false
+        WatermarkState.Speed = cfg.watermark.ShowSpeed ~= false
+        ApplyWatermarkState()
+    end
+
+    if cfg.stars and cfg.stars.color then
+        getgenv().StarsColor = Color3.fromRGB(cfg.stars.color.r or 255, cfg.stars.color.g or 255, cfg.stars.color.b or 255)
+        if WorldStarsFolder then
+            for _, s in ipairs(WorldStarsFolder:GetChildren()) do
+                if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
+                local l = s:FindFirstChildOfClass("PointLight")
+                if l then l.Color = getgenv().StarsColor end
+            end
+        end
+    end
+
+    if getgenv().FogEnabled then
+        if getgenv().OriginalFogColor == nil then
+            getgenv().OriginalFogColor = Lighting.FogColor
+            getgenv().OriginalFogStart = Lighting.FogStart
+            getgenv().OriginalFogEnd = Lighting.FogEnd
+        end
+        Lighting.FogColor = Color3.fromRGB(getgenv().FogR or 200, getgenv().FogG or 200, getgenv().FogB or 255)
+        Lighting.FogStart = getgenv().FogStart or 0
+        Lighting.FogEnd = getgenv().FogEnd or 500
+    end
+
+    -- Восстанавливаем бинды
+    if cfg.keybinds then
+        for id, data in pairs(KeybindData) do
+            local keyName = data.name and cfg.keybinds[data.name]
+            if keyName then
+                local keyCode = NameToKey(keyName)
+                if keyCode then
+                    data.key = keyCode
+                    data.label.Text = "[" .. keyName .. "]"
+                    data.label.TextColor3 = Color3.fromRGB(180, 180, 180)
+                end
+            else
+                -- Если в конфиге нет бинда для этой функции — сбрасываем
+                if data.name and cfg.keybinds[data.name] == nil then
+                    -- ничего, оставляем как было
+                end
+            end
+        end
+    end
+
+    if cfg.friends then
+        FriendList = cfg.friends
+        SaveFriends()
+        RefreshFriendList()
+    end
+
     if cfg.points then
         for _, m in pairs(WorldMarkers) do m.part:Destroy() end
         WorldMarkers = {}
@@ -1408,12 +1855,11 @@ CreateButton(ConfigSection, "Load Config from Text", function()
         RefreshWorldMarkers()
         RefreshPointsList()
     end
-    print("[Radioactive] Config loaded!")
+
+    print("[Radioactive] Config loaded! Re-toggle features to apply them.")
 end)
 
--- ==========================================================
--- DRAGGABLE (с плавным отпусканием)
--- ==========================================================
+-- DRAGGABLE
 local function makeDraggable(frame, dragArea)
     local dragging, dragInput, dragStart, startPos
     dragArea.InputBegan:Connect(function(input)
@@ -1421,7 +1867,6 @@ local function makeDraggable(frame, dragArea)
             dragging = true
             dragStart = input.Position
             startPos = frame.Position
-            Tween(frame, 0.15, {BackgroundTransparency = 0.05})
         end
     end)
     dragArea.InputChanged:Connect(function(input)
@@ -1436,7 +1881,6 @@ local function makeDraggable(frame, dragArea)
     dragArea.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
-            Tween(frame, 0.15, {BackgroundTransparency = 0.1})
         end
     end)
 end
@@ -1446,9 +1890,7 @@ makeDraggable(Menu_MainFrame, Header)
 makeDraggable(TargetFrame, TargetName)
 makeDraggable(MiniMapFrame, MiniMapTitle)
 
--- ==========================================================
 -- HUD UPDATE
--- ==========================================================
 local frames = 0
 local lastTime = tick()
 local currentFps = 0
@@ -1477,13 +1919,40 @@ RunService.RenderStepped:Connect(function()
     SpeedLabel.Text = speed .. " sps"
 end)
 
--- ==========================================================
--- TARGET HUD LOOP (с плавным появлением)
--- ==========================================================
+-- TARGET HUD LOOP
 local targetAccum = 0
-local targetCurrentAlpha = 0
+local targetCurrentState = false
+
+local function FadeTargetHUD(show)
+    if show then
+        TargetFrame.Visible = true
+        Tween(TargetFrame, 0.35, {BackgroundTransparency = 0.15})
+        Tween(TFS, 0.35, {Transparency = 0})
+        Tween(TargetName, 0.3, {TextTransparency = 0})
+        Tween(TargetHPBarBg, 0.3, {BackgroundTransparency = 0})
+        Tween(TargetHPBar, 0.3, {BackgroundTransparency = 0})
+        Tween(TargetHPText, 0.3, {TextTransparency = 0})
+    else
+        Tween(TargetFrame, 0.3, {BackgroundTransparency = 1})
+        Tween(TFS, 0.3, {Transparency = 1})
+        Tween(TargetName, 0.25, {TextTransparency = 1})
+        Tween(TargetHPBarBg, 0.25, {BackgroundTransparency = 1})
+        Tween(TargetHPBar, 0.25, {BackgroundTransparency = 1})
+        Tween(TargetHPText, 0.25, {TextTransparency = 1})
+        task.delay(0.3, function()
+            if not targetCurrentState then TargetFrame.Visible = false end
+        end)
+    end
+end
+
 RunService.RenderStepped:Connect(function(dt)
-    if not getgenv().TargetHUDEnabled then return end
+    if not getgenv().TargetHUDEnabled then
+        if targetCurrentState then
+            targetCurrentState = false
+            FadeTargetHUD(false)
+        end
+        return
+    end
     targetAccum = targetAccum + dt
     if targetAccum < 0.05 then return end
     targetAccum = 0
@@ -1506,26 +1975,10 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    local targetAlpha = closest and 1 or 0
-    if targetAlpha ~= targetCurrentAlpha then
-        targetCurrentAlpha = targetAlpha
-        if targetAlpha == 1 then
-            TargetFrame.Visible = true
-            TargetFrame.BackgroundTransparency = 1
-            TargetFrame.Position = UDim2.new(0, -240, 0, 200)
-            Tween(TargetFrame, 0.35, {
-                BackgroundTransparency = 0.15,
-                Position = UDim2.new(0, 20, 0, 200)
-            }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-        else
-            Tween(TargetFrame, 0.25, {
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, -240, 0, 200)
-            }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-            task.delay(0.25, function()
-                if targetCurrentAlpha == 0 then TargetFrame.Visible = false end
-            end)
-        end
+    local hasTarget = closest ~= nil
+    if hasTarget ~= targetCurrentState then
+        targetCurrentState = hasTarget
+        FadeTargetHUD(hasTarget)
     end
 
     if closest then
@@ -1537,9 +1990,7 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- ==========================================================
 -- MINIMAP LOOP
--- ==========================================================
 local minimapAccum = 0
 RunService.RenderStepped:Connect(function(dt)
     if not MiniMapFrame.Visible then return end
@@ -1603,9 +2054,7 @@ RunService.RenderStepped:Connect(function(dt)
                 df.BackgroundColor3 = isFr and Config.FriendColor or Color3.fromRGB(255, 60, 60)
                 df.ZIndex = 6
                 df.Parent = MiniMapArea
-                df.BackgroundTransparency = 1
                 local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(1, 0) dc.Parent = df
-                Tween(df, 0.3, {BackgroundTransparency = 0})
                 local lbl = Instance.new("TextLabel")
                 lbl.Size = UDim2.new(0, 60, 0, 12)
                 lbl.BackgroundTransparency = 1
@@ -1659,9 +2108,7 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- ==========================================================
 -- WORLD POINT DISTANCE UPDATE
--- ==========================================================
 RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
@@ -1672,9 +2119,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ==========================================================
 -- RSHIFT
--- ==========================================================
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.KeyCode == Enum.KeyCode.RightShift then
@@ -1686,4 +2131,4 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-print("Radioactive загружен! RSHIFT - меню.")
+print("Radioactive загружен! RSHIFT - меню. MMB по функции + клавиша = бинд.")
