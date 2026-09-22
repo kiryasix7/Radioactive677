@@ -1997,8 +1997,7 @@ end
 
 CreateButton(ConfigSection, "Copy Config to Clipboard", function()
     local s = BuildConfigString()
-    local ok = pcall(function() setclipboard(s) end)
-    if ok then print("[Radioactive] Config copied! (" .. #s .. " chars)") end
+    pcall(function() setclipboard(s) end)
 end)
 
 local LoadBoxFrame = Instance.new("Frame")
@@ -2031,9 +2030,9 @@ LoadBox.Parent = LoadBoxFrame
 
 CreateButton(ConfigSection, "Load Config from Text", function()
     local txt = LoadBox.Text
-    if not txt or txt == "" then print("[Radioactive] Config empty!") return end
+    if not txt or txt == "" then return end
     local ok, cfg = pcall(function() return HttpService:JSONDecode(txt) end)
-    if not ok or type(cfg) ~= "table" then print("[Radioactive] Invalid config!") return end
+    if not ok or type(cfg) ~= "table" then return end
 
     if cfg.features then for k, v in pairs(cfg.features) do getgenv()[k] = v end end
     if cfg.theme then UpdateTheme(Color3.fromRGB(cfg.theme.r or 190, cfg.theme.g or 45, cfg.theme.b or 45)) end
@@ -2108,7 +2107,6 @@ CreateButton(ConfigSection, "Load Config from Text", function()
         RefreshWorldMarkers()
         RefreshPointsUI()
     end
-    print("[Radioactive] Config loaded!")
 end)
 
 -- DRAGGABLE
@@ -2382,5 +2380,3 @@ UserInputService.InputBegan:Connect(function(input, gp)
         end
     end
 end)
-
-print("Radioactive v6 загружен! RSHIFT - меню.")
