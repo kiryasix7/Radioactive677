@@ -1,9 +1,5 @@
--- Radioactive | Expensive Style UI v6
--- RSHIFT - меню
--- [Bind] → клавиша = бинд
--- [x] = удалить бинд
--- ESC = отмена бинда
--- Зелёный текст в Keybinds HUD = функция включена
+-- Radioactive | Legit+ Edition v26 (No Player Collision added)
+-- K - меню | [Bind] → клавиша | [x] = удалить | ESC = отмена
 
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
@@ -37,27 +33,20 @@ local Config = {
 }
 
 local ThemeElements = {}
-local function RegisterThemeElement(element, type, isActiveOnly)
-    table.insert(ThemeElements, {element = element, type = type or "bg", isActiveOnly = isActiveOnly or false})
+local function RegisterThemeElement(el, t, a)
+    table.insert(ThemeElements, {element = el, type = t or "bg", isActiveOnly = a or false})
+end
+local function Tween(o, t, p, s, d)
+    local info = TweenInfo.new(t or 0.25, s or Enum.EasingStyle.Quart, d or Enum.EasingDirection.Out)
+    local tw = TweenService:Create(o, info, p); tw:Play(); return tw
 end
 
-local function Tween(obj, time, props, style, dir)
-    local info = TweenInfo.new(time or 0.25, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out)
-    local t = TweenService:Create(obj, info, props)
-    t:Play()
-    return t
-end
-
--- ==========================================================
--- KEYBIND SYSTEM
--- ==========================================================
 local KeybindData = {}
 local BindingTarget = nil
 local RefreshKeybindsHUD = function() end
 
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
-
     if BindingTarget then
         if input.UserInputType == Enum.UserInputType.Keyboard then
             local data = KeybindData[BindingTarget]
@@ -65,15 +54,15 @@ UserInputService.InputBegan:Connect(function(input, gp)
                 if input.KeyCode == Enum.KeyCode.Escape then
                     if data.key then
                         data.label.Text = "[" .. data.key.Name .. "]"
-                        data.label.TextColor3 = Color3.fromRGB(120, 220, 120)
+                        data.label.TextColor3 = Color3.fromRGB(120,220,120)
                     else
                         data.label.Text = "[Bind]"
-                        data.label.TextColor3 = Color3.fromRGB(160, 160, 160)
+                        data.label.TextColor3 = Color3.fromRGB(160,160,160)
                     end
                 else
                     data.key = input.KeyCode
                     data.label.Text = "[" .. input.KeyCode.Name .. "]"
-                    data.label.TextColor3 = Color3.fromRGB(120, 220, 120)
+                    data.label.TextColor3 = Color3.fromRGB(120,220,120)
                 end
             end
             BindingTarget = nil
@@ -81,23 +70,16 @@ UserInputService.InputBegan:Connect(function(input, gp)
         end
         return
     end
-
     if input.UserInputType == Enum.UserInputType.Keyboard then
         if UserInputService:GetFocusedTextBox() then return end
         for _, data in pairs(KeybindData) do
-            if data.key and data.key == input.KeyCode then
-                data.toggle()
-            end
+            if data.key and data.key == input.KeyCode then data.toggle() end
         end
     end
 end)
 
-local function NameToKey(name)
-    if not name then return nil end
-    return Enum.KeyCode[name]
-end
+local function NameToKey(name) if not name then return nil end return Enum.KeyCode[name] end
 
--- PERSISTENT STATE
 local FriendList = {}
 local PointsList = {}
 local PointIdCounter = 0
@@ -105,8 +87,8 @@ local PointIdCounter = 0
 local function LoadData()
     pcall(function()
         if isfile("RadioactiveFriends.json") then
-            local data = HttpService:JSONDecode(readfile("RadioactiveFriends.json"))
-            if type(data) == "table" then FriendList = data end
+            local d = HttpService:JSONDecode(readfile("RadioactiveFriends.json"))
+            if type(d) == "table" then FriendList = d end
         end
     end)
     pcall(function()
@@ -121,26 +103,17 @@ local function LoadData()
         end
     end)
 end
-
-local function SaveFriends()
-    pcall(function() writefile("RadioactiveFriends.json", HttpService:JSONEncode(FriendList)) end)
-end
-
+local function SaveFriends() pcall(function() writefile("RadioactiveFriends.json", HttpService:JSONEncode(FriendList)) end) end
 local function SavePoints()
     local arr = {}
-    for _, p in pairs(PointsList) do
-        table.insert(arr, {name = p.name, x = p.pos.X, y = p.pos.Y, z = p.pos.Z})
-    end
+    for _, p in pairs(PointsList) do table.insert(arr, {name = p.name, x = p.pos.X, y = p.pos.Y, z = p.pos.Z}) end
     pcall(function() writefile("RadioactivePoints.json", HttpService:JSONEncode(arr)) end)
 end
-
-local function IsFriend(player)
-    return FriendList[string.lower(player.Name)] ~= nil
-end
+local function IsFriend(player) return FriendList[string.lower(player.Name)] ~= nil end
 
 LoadData()
 
--- HUD PANEL
+-- HUD
 local HUDScreen = Instance.new("ScreenGui")
 HUDScreen.Name = "RadioactiveHUD"
 HUDScreen.ResetOnSpawn = false
@@ -195,7 +168,7 @@ local function createSeparator(parent)
     Sep.Size = UDim2.new(0, 10, 1, 0)
     Sep.Font = Config.FontBold
     Sep.Text = "•"
-    Sep.TextColor3 = Color3.fromRGB(80, 80, 80)
+    Sep.TextColor3 = Color3.fromRGB(80,80,80)
     Sep.TextSize = 18
     Sep.Parent = parent
     return Sep
@@ -251,7 +224,7 @@ local function ApplyWatermarkState()
     end
 end
 
--- AUX SCREEN
+-- AUX
 local AuxScreen = Instance.new("ScreenGui")
 AuxScreen.Name = "RadioactiveAux"
 AuxScreen.ResetOnSpawn = false
@@ -294,12 +267,8 @@ local KBH_LL = Instance.new("UIListLayout") KBH_LL.FillDirection = Enum.FillDire
 local KBH_Pad = Instance.new("UIPadding") KBH_Pad.PaddingBottom = UDim.new(0, 8) KBH_Pad.Parent = KBH_List
 
 RefreshKeybindsHUD = function()
-    for _, c in ipairs(KBH_List:GetChildren()) do
-        if c:IsA("TextLabel") then c:Destroy() end
-    end
-    for id, data in pairs(KeybindData) do
-        data.hudLabel = nil
-    end
+    for _, c in ipairs(KBH_List:GetChildren()) do if c:IsA("TextLabel") then c:Destroy() end end
+    for id, data in pairs(KeybindData) do data.hudLabel = nil end
     local count = 0
     for id, data in pairs(KeybindData) do
         if data.key and data.name then
@@ -316,25 +285,18 @@ RefreshKeybindsHUD = function()
             count = count + 1
         end
     end
-    if count == 0 then
-        KeybindsHUD.Visible = false
-    else
-        if getgenv().KeybindsHUDEnabled then KeybindsHUD.Visible = true end
-    end
+    if count == 0 then KeybindsHUD.Visible = false
+    elseif getgenv().KeybindsHUDEnabled then KeybindsHUD.Visible = true end
 end
 
--- Цвет-апдейтер для Keybinds HUD (зелёный = вкл, белый = выкл)
 task.spawn(function()
     while true do
         task.wait(0.1)
         if getgenv().KeybindsHUDEnabled and KeybindsHUD.Visible then
-            for id, data in pairs(KeybindData) do
+            for _, data in pairs(KeybindData) do
                 if data.hudLabel and data.hudLabel.Parent and data.getState then
-                    local on = data.getState()
-                    local targetColor = on and Config.BindOnColor or Config.BindOffColor
-                    if data.hudLabel.TextColor3 ~= targetColor then
-                        data.hudLabel.TextColor3 = targetColor
-                    end
+                    local tc = data.getState() and Config.BindOnColor or Config.BindOffColor
+                    if data.hudLabel.TextColor3 ~= tc then data.hudLabel.TextColor3 = tc end
                 end
             end
         end
@@ -369,7 +331,7 @@ TargetName.Parent = TargetFrame
 local TargetHPBarBg = Instance.new("Frame")
 TargetHPBarBg.Size = UDim2.new(1, -20, 0, 8)
 TargetHPBarBg.Position = UDim2.new(0, 10, 0, 35)
-TargetHPBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TargetHPBarBg.BackgroundColor3 = Color3.fromRGB(40,40,40)
 TargetHPBarBg.BackgroundTransparency = 1
 TargetHPBarBg.Parent = TargetFrame
 local THBC = Instance.new("UICorner") THBC.CornerRadius = UDim.new(1, 0) THBC.Parent = TargetHPBarBg
@@ -418,7 +380,7 @@ MiniMapTitle.TextSize = 11
 MiniMapTitle.TextXAlignment = Enum.TextXAlignment.Left
 MiniMapTitle.Parent = MiniMapFrame
 
-local MiniMapArea = Instance.new("CanvasGroup")
+local MiniMapArea = Instance.new("Frame")
 MiniMapArea.Size = UDim2.new(1, -20, 1, -30)
 MiniMapArea.Position = UDim2.new(0, 10, 0, 25)
 MiniMapArea.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
@@ -429,29 +391,22 @@ MiniMapArea.Parent = MiniMapFrame
 local MAC = Instance.new("UICorner") MAC.CornerRadius = UDim.new(0, 6) MAC.Parent = MiniMapArea
 local MAS = Instance.new("UIStroke") MAS.Color = Color3.fromRGB(40,40,40) MAS.Thickness = 1 MAS.Parent = MiniMapArea
 
-local MiniMapRotator = Instance.new("Frame")
-MiniMapRotator.AnchorPoint = Vector2.new(0.5, 0.5)
-MiniMapRotator.Position = UDim2.new(0.5, 0, 0.5, 0)
-MiniMapRotator.Size = UDim2.new(1, 0, 1, 0)
-MiniMapRotator.BackgroundTransparency = 1
-MiniMapRotator.Parent = MiniMapArea
-
-local MiniMapGridLines = {}
-for i = 1, 15 do
-    local line = Instance.new("Frame")
-    line.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    line.BorderSizePixel = 0
-    line.AnchorPoint = Vector2.new(0.5, 0.5)
-    line.Parent = MiniMapRotator
-    table.insert(MiniMapGridLines, {frame = line, isVertical = true})
-end
-for i = 1, 15 do
-    local line = Instance.new("Frame")
-    line.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-    line.BorderSizePixel = 0
-    line.AnchorPoint = Vector2.new(0.5, 0.5)
-    line.Parent = MiniMapRotator
-    table.insert(MiniMapGridLines, {frame = line, isVertical = false})
+local GRID_RANGE = 6
+local GRID_DOT_SIZE = 2
+local MiniMapGridDots = {}
+for i = -GRID_RANGE, GRID_RANGE do
+    for j = -GRID_RANGE, GRID_RANGE do
+        local dot = Instance.new("Frame")
+        dot.Size = UDim2.new(0, GRID_DOT_SIZE, 0, GRID_DOT_SIZE)
+        dot.AnchorPoint = Vector2.new(0.5, 0.5)
+        dot.Position = UDim2.new(0.5, 0, 0.5, 0)
+        dot.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        dot.BorderSizePixel = 0
+        dot.ZIndex = 1
+        dot.Parent = MiniMapArea
+        local c = Instance.new("UICorner") c.CornerRadius = UDim.new(1, 0) c.Parent = dot
+        table.insert(MiniMapGridDots, {frame = dot, i = i, j = j})
+    end
 end
 
 local MiniMapPlayerDot = Instance.new("Frame")
@@ -464,6 +419,11 @@ local MPDC = Instance.new("UICorner") MPDC.CornerRadius = UDim.new(1, 0) MPDC.Pa
 
 local MiniMapDots = {}
 local MiniMapPointDots = {}
+
+getgenv().PointColorR = 255
+getgenv().PointColorG = 255
+getgenv().PointColorB = 255
+local function GetPointColor() return Color3.fromRGB(getgenv().PointColorR, getgenv().PointColorG, getgenv().PointColorB) end
 
 -- MENU
 local MenuScreen = Instance.new("ScreenGui")
@@ -489,17 +449,13 @@ local function OpenMenu()
     Menu_MainFrame.Visible = true
     Menu_MainFrame.BackgroundTransparency = 1
     Menu_Stroke.Transparency = 1
-    Tween(Menu_MainFrame, 0.35, {BackgroundTransparency = 0.1}, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    Tween(Menu_MainFrame, 0.35, {BackgroundTransparency = 0.1})
     Tween(Menu_Stroke, 0.35, {Transparency = 0})
 end
-
 local function CloseMenu()
-    Tween(Menu_MainFrame, 0.25, {BackgroundTransparency = 1}, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+    Tween(Menu_MainFrame, 0.25, {BackgroundTransparency = 1})
     Tween(Menu_Stroke, 0.25, {Transparency = 1})
-    task.delay(0.25, function()
-        if not Menu_MainFrame.Visible then return end
-        Menu_MainFrame.Visible = false
-    end)
+    task.delay(0.25, function() if not Menu_MainFrame.Visible then return end Menu_MainFrame.Visible = false end)
 end
 
 local Header = Instance.new("Frame")
@@ -537,7 +493,7 @@ ContentArea.BackgroundTransparency = 1
 ContentArea.ClipsDescendants = true
 ContentArea.Parent = Menu_MainFrame
 
-local Tabs = {"HUD", "Combat", "Movement", "Player", "Render", "Misc", "Friends", "Points", "Theme", "Configurations"}
+local Tabs = {"HUD", "Combat", "Movement", "Render", "Misc", "Friends", "Points", "Theme", "Configurations"}
 local TabButtons = {}
 local TabContents = {}
 local TabIndicators = {}
@@ -571,7 +527,6 @@ local function CreateToggle(parent, textStr, defaultState, callback, noBind)
     F.Size = UDim2.new(1, 0, 0, 25)
     F.BackgroundTransparency = 1
     F.Parent = parent
-
     local L = Instance.new("TextLabel")
     L.Size = UDim2.new(1, -150, 1, 0)
     L.BackgroundTransparency = 1
@@ -581,7 +536,6 @@ local function CreateToggle(parent, textStr, defaultState, callback, noBind)
     L.TextSize = 14
     L.TextXAlignment = Enum.TextXAlignment.Left
     L.Parent = F
-
     local B = Instance.new("Frame")
     B.Size = UDim2.new(0, 36, 0, 20)
     B.Position = UDim2.new(1, -36, 0.5, -10)
@@ -595,7 +549,6 @@ local function CreateToggle(parent, textStr, defaultState, callback, noBind)
     K.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     K.Parent = B
     local KC = Instance.new("UICorner") KC.CornerRadius = UDim.new(1, 0) KC.Parent = K
-
     local state = defaultState
     local function toggleValue()
         state = not state
@@ -603,14 +556,12 @@ local function CreateToggle(parent, textStr, defaultState, callback, noBind)
         Tween(K, 0.25, {Position = state and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)})
         if callback then callback(state) end
     end
-
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 1, 0)
     btn.BackgroundTransparency = 1
     btn.Text = ""
     btn.Parent = F
     btn.MouseButton1Click:Connect(toggleValue)
-
     if not noBind then
         local BindBtn = Instance.new("TextButton")
         BindBtn.Size = UDim2.new(0, 55, 0, 20)
@@ -623,8 +574,6 @@ local function CreateToggle(parent, textStr, defaultState, callback, noBind)
         BindBtn.AutoButtonColor = false
         BindBtn.Parent = F
         local BBC = Instance.new("UICorner") BBC.CornerRadius = UDim.new(0, 4) BBC.Parent = BindBtn
-        local BBS = Instance.new("UIStroke") BBS.Color = Color3.fromRGB(60, 60, 60) BBS.Thickness = 1 BBS.Parent = BindBtn
-
         local UnbindBtn = Instance.new("TextButton")
         UnbindBtn.Size = UDim2.new(0, 18, 0, 20)
         UnbindBtn.Position = UDim2.new(1, -62, 0.5, -10)
@@ -636,24 +585,14 @@ local function CreateToggle(parent, textStr, defaultState, callback, noBind)
         UnbindBtn.AutoButtonColor = false
         UnbindBtn.Parent = F
         local UBC = Instance.new("UICorner") UBC.CornerRadius = UDim.new(0, 4) UBC.Parent = UnbindBtn
-        local UBS = Instance.new("UIStroke") UBS.Color = Color3.fromRGB(70, 40, 40) UBS.Thickness = 1 UBS.Parent = UnbindBtn
-
         local id = "toggle_" .. textStr
-        local bindData = {
-            key = nil,
-            toggle = toggleValue,
-            label = BindBtn,
-            name = textStr,
-            getState = function() return state end
-        }
+        local bindData = {key = nil, toggle = toggleValue, label = BindBtn, name = textStr, getState = function() return state end}
         KeybindData[id] = bindData
-
         BindBtn.MouseButton1Click:Connect(function()
             BindingTarget = id
             BindBtn.Text = "[...]"
             BindBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
         end)
-
         UnbindBtn.MouseButton1Click:Connect(function()
             bindData.key = nil
             BindBtn.Text = "[Bind]"
@@ -662,8 +601,7 @@ local function CreateToggle(parent, textStr, defaultState, callback, noBind)
             RefreshKeybindsHUD()
         end)
     end
-
-    return F
+    return F, toggleValue
 end
 
 local function CreateSlider(parent, textStr, minVal, maxVal, defaultVal, callback)
@@ -693,7 +631,7 @@ local function CreateSlider(parent, textStr, minVal, maxVal, defaultVal, callbac
     local Bg = Instance.new("Frame")
     Bg.Size = UDim2.new(1, 0, 0, 6)
     Bg.Position = UDim2.new(0, 0, 0, 28)
-    Bg.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Bg.BackgroundColor3 = Color3.fromRGB(50,50,50)
     Bg.Parent = F
     local BgC = Instance.new("UICorner") BgC.CornerRadius = UDim.new(1, 0) BgC.Parent = Bg
     local Fill = Instance.new("Frame")
@@ -772,7 +710,6 @@ local function CreateXYZRow(parent)
         B.BackgroundColor3 = Config.ElementBg
         B.Parent = F
         local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 6) c.Parent = B
-        local s = Instance.new("UIStroke") s.Color = Color3.fromRGB(45,45,45) s.Thickness = 1 s.Parent = B
         local T = Instance.new("TextBox")
         T.Size = UDim2.new(1, -8, 1, 0)
         T.Position = UDim2.new(0, 4, 0, 0)
@@ -837,13 +774,12 @@ end
 local HUDContent = TabContents[1]
 local CombatContent = TabContents[2]
 local MovementContent = TabContents[3]
-local PlayerContent = TabContents[4]
-local RenderContent = TabContents[5]
-local MiscContent = TabContents[6]
-local FriendsContent = TabContents[7]
-local PointsContent = TabContents[8]
-local ThemeContent = TabContents[9]
-local ConfigContent = TabContents[10]
+local RenderContent = TabContents[4]
+local MiscContent = TabContents[5]
+local FriendsContent = TabContents[6]
+local PointsContent = TabContents[7]
+local ThemeContent = TabContents[8]
+local ConfigContent = TabContents[9]
 
 -- HUD TAB
 local WMSection = CreateSection(HUDContent, "Watermark (Top HUD)")
@@ -882,11 +818,8 @@ getgenv().TargetHUDEnabled = true
 local KeybindsHUDSection = CreateSection(HUDContent, "Keybinds HUD")
 CreateToggle(KeybindsHUDSection, "Show Keybinds HUD", true, function(s)
     getgenv().KeybindsHUDEnabled = s
-    if not s then
-        KeybindsHUD.Visible = false
-    else
-        RefreshKeybindsHUD()
-    end
+    if not s then KeybindsHUD.Visible = false
+    else RefreshKeybindsHUD() end
 end, true)
 getgenv().KeybindsHUDEnabled = true
 
@@ -905,310 +838,339 @@ CreateToggle(MiniMapSection, "MiniMap Enabled", true, function(s)
     end
 end, true)
 
--- COMBAT
-local CombatMain = CreateSection(CombatContent, "Aimbot")
-getgenv().AimbotTarget = "Head"
-CreateToggle(CombatMain, "Aimbot Enabled", false, function(state)
-    getgenv().AimbotEnabled = state
-    if state then
-        getgenv().AimbotConnection = RunService.RenderStepped:Connect(function()
-            local closest, shortest = nil, math.huge
-            local mp = UserInputService:GetMouseLocation()
-            local cam = workspace.CurrentCamera
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and not IsFriend(p) then
-                    local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-                    local hum = p.Character:FindFirstChild("Humanoid")
-                    if hrp and hum and hum.Health > 0 then
-                        if getgenv().TeamCheck and p.Team == LocalPlayer.Team then continue end
-                        local sp, on = cam:WorldToViewportPoint(hrp.Position)
-                        if on then
-                            local d = (Vector2.new(mp.X, mp.Y) - Vector2.new(sp.X, sp.Y)).Magnitude
-                            if d < shortest and d < (getgenv().AimbotFOV or 150) then
-                                if getgenv().WallCheck then
-                                    local ray = Ray.new(cam.CFrame.Position, (hrp.Position - cam.CFrame.Position).Unit * 1000)
-                                    local hit = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character, p.Character})
-                                    if hit then continue end
-                                end
-                                shortest = d
-                                closest = p
-                            end
-                        end
-                    end
-                end
-            end
-            if closest and closest.Character then
-                local tp = getgenv().AimbotTarget == "Head" and closest.Character:FindFirstChild("Head") or closest.Character:FindFirstChild("HumanoidRootPart")
-                if tp then cam.CFrame = CFrame.new(cam.CFrame.Position, tp.Position) end
-            end
-        end)
-    else
-        if getgenv().AimbotConnection then getgenv().AimbotConnection:Disconnect() end
-    end
-end)
-CreateSlider(CombatMain, "Aimbot FOV", 10, 500, 150, function(v) getgenv().AimbotFOV = v end)
-CreateToggle(CombatMain, "Aim Target: Head", true, function(s) getgenv().AimbotTarget = s and "Head" or "Body" end)
-CreateToggle(CombatMain, "Team Check", false, function(s) getgenv().TeamCheck = s end)
-CreateToggle(CombatMain, "Wall Check", false, function(s) getgenv().WallCheck = s end)
+-- ============ COMBAT TAB ============
 
-local CombatHitbox = CreateSection(CombatContent, "Hitbox Expander")
-CreateToggle(CombatHitbox, "Hitbox Enabled", false, function(state)
-    getgenv().HitboxEnabled = state
-    if state then
-        getgenv().HitboxConnection = RunService.Heartbeat:Connect(function()
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and not IsFriend(p) then
-                    local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local s = getgenv().HitboxSize or 5
-                        hrp.Size = Vector3.new(s, s, s)
-                        hrp.Transparency = 0.5
-                        hrp.CanCollide = false
-                        hrp.Massless = true
-                    end
-                end
-            end
-        end)
-    else
-        if getgenv().HitboxConnection then getgenv().HitboxConnection:Disconnect() end
+-- ---------- AIMBOT ----------
+local AimBotSection = CreateSection(CombatContent, "AimBot")
+
+getgenv().PredictAimEnabled = false
+getgenv().PredictAimFOV = 200
+getgenv().PredictAimHitpart = "Head"
+getgenv().PredictAimSmooth = 1
+getgenv().PredictAimTeamCheck = false
+getgenv().PredictAimWallCheck = false
+getgenv().PredictAimTarget = nil
+getgenv().PredictAimBulletSpeed = 1500
+getgenv().PredictAimLastTime = 0.15
+getgenv().PredictEnabled = true
+
+local AimBotToggleFn = nil
+local _, paToggle = CreateToggle(AimBotSection, "AimBot Enabled", false, function(state)
+    getgenv().PredictAimEnabled = state
+    getgenv().PredictAimTarget = nil
+end)
+AimBotToggleFn = paToggle
+
+CreateToggle(AimBotSection, "Predict", true, function(state)
+    getgenv().PredictEnabled = state
+end, true)
+
+CreateSlider(AimBotSection, "FOV", 30, 600, 200, function(v) getgenv().PredictAimFOV = v end)
+CreateSlider(AimBotSection, "Bullet Speed (studs/s)", 200, 5000, 1500, function(v) getgenv().PredictAimBulletSpeed = v end)
+CreateSlider(AimBotSection, "Smoothness (1 = instant)", 1, 10, 1, function(v) getgenv().PredictAimSmooth = v end)
+CreateToggle(AimBotSection, "Target: Head", true, function(s) getgenv().PredictAimHitpart = s and "Head" or "Body" end)
+CreateToggle(AimBotSection, "Team Check", false, function(s) getgenv().PredictAimTeamCheck = s end)
+CreateToggle(AimBotSection, "Wall Check", false, function(s) getgenv().PredictAimWallCheck = s end)
+
+local AimBotInfoLabel = Instance.new("TextLabel")
+AimBotInfoLabel.Size = UDim2.new(1, 0, 0, 16)
+AimBotInfoLabel.BackgroundTransparency = 1
+AimBotInfoLabel.Text = "Auto Predict Time: 0.15s (dist + ping)"
+AimBotInfoLabel.TextColor3 = Config.TextDim
+AimBotInfoLabel.Font = Config.Font
+AimBotInfoLabel.TextSize = 11
+AimBotInfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+AimBotInfoLabel.Parent = AimBotSection
+
+local function GetPing()
+    local p = 0
+    pcall(function() p = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) end)
+    return p
+end
+
+RunService.RenderStepped:Connect(function(dt)
+    if not getgenv().PredictAimEnabled then return end
+    local cam = workspace.CurrentCamera
+    local myChar = LocalPlayer.Character
+    if not myChar then return end
+    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+    if not myHRP then return end
+    local vp = cam.ViewportSize
+    local center = Vector2.new(vp.X/2, vp.Y/2)
+    local fov = getgenv().PredictAimFOV or 200
+    local hitpart = getgenv().PredictAimHitpart or "Head"
+
+    local target = getgenv().PredictAimTarget
+    if target then
+        local tChar = target.Character
+        local alive = false
+        if tChar then
+            local tHum = tChar:FindFirstChildOfClass("Humanoid")
+            if tHum and tHum.Health > 0 then alive = true end
+        end
+        if not alive then
+            getgenv().PredictAimTarget = nil
+            target = nil
+        end
+    end
+
+    if not target then
+        local best, bestScore = nil, math.huge
         for _, p in ipairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character then
+            if p ~= LocalPlayer and p.Character and not IsFriend(p) then
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
                 local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then hrp.Size = Vector3.new(2, 2, 1) hrp.Transparency = 1 end
-            end
-        end
-    end
-end)
-CreateSlider(CombatHitbox, "Hitbox Size", 1, 15, 5, function(v) getgenv().HitboxSize = v end)
-
--- MOVEMENT
-local MovementSpeed = CreateSection(MovementContent, "Speed")
-CreateToggle(MovementSpeed, "Speed Enabled", false, function(state)
-    getgenv().SpeedEnabled = state
-    if state then
-        local c = LocalPlayer.Character
-        if c and c:FindFirstChild("Humanoid") then
-            getgenv().SpeedOriginal = c.Humanoid.WalkSpeed
-        end
-        getgenv().SpeedConnection = RunService.Heartbeat:Connect(function()
-            local c2 = LocalPlayer.Character
-            if c2 and c2:FindFirstChild("Humanoid") then
-                c2.Humanoid.WalkSpeed = getgenv().WalkSpeed or 16
-            end
-        end)
-    else
-        if getgenv().SpeedConnection then getgenv().SpeedConnection:Disconnect() end
-        local c = LocalPlayer.Character
-        if c and c:FindFirstChild("Humanoid") then
-            local original = getgenv().SpeedOriginal
-            if original then c.Humanoid.WalkSpeed = original end
-        end
-    end
-end)
-CreateSlider(MovementSpeed, "WalkSpeed", 16, 500, 16, function(v) getgenv().WalkSpeed = v end)
-
-local MovementFly = CreateSection(MovementContent, "Fly")
-CreateToggle(MovementFly, "Fly Enabled", false, function(state)
-    getgenv().FlyEnabled = state
-    local c = LocalPlayer.Character
-    if not c or not c:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = c.HumanoidRootPart
-    if state then
-        local bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(9e9,9e9,9e9)
-        bv.Velocity = Vector3.new(0,0,0)
-        bv.Parent = hrp
-        getgenv().FlyBodyVelocity = bv
-        getgenv().FlyConnection = RunService.RenderStepped:Connect(function()
-            local cam = workspace.CurrentCamera
-            local mv = Vector3.new(0,0,0)
-            local sp = getgenv().FlySpeed or 50
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then mv = mv + cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then mv = mv - cam.CFrame.LookVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then mv = mv - cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then mv = mv + cam.CFrame.RightVector end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then mv = mv + Vector3.new(0,1,0) end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then mv = mv - Vector3.new(0,1,0) end
-            bv.Velocity = mv * sp
-        end)
-    else
-        if getgenv().FlyConnection then getgenv().FlyConnection:Disconnect() end
-        if getgenv().FlyBodyVelocity then getgenv().FlyBodyVelocity:Destroy() end
-    end
-end)
-CreateSlider(MovementFly, "Fly Speed", 10, 600, 50, function(v) getgenv().FlySpeed = v end)
-
-local MovementNoclip = CreateSection(MovementContent, "Noclip")
-CreateToggle(MovementNoclip, "Noclip Enabled", false, function(state)
-    getgenv().NoclipEnabled = state
-    if state then
-        getgenv().NoclipConnection = RunService.Stepped:Connect(function()
-            local c = LocalPlayer.Character
-            if c then
-                for _, p in ipairs(c:GetDescendants()) do
-                    if p:IsA("BasePart") then p.CanCollide = false end
-                end
-            end
-        end)
-    else
-        if getgenv().NoclipConnection then getgenv().NoclipConnection:Disconnect() end
-        local c = LocalPlayer.Character
-        if c then
-            for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = true end
-            end
-        end
-    end
-end)
-
-local MovementStrafe = CreateSection(MovementContent, "Strafe")
-getgenv().StrafeEnabled = false
-getgenv().StrafePower = 30
-CreateToggle(MovementStrafe, "Strafe (Minecraft Style)", false, function(state)
-    getgenv().StrafeEnabled = state
-    if state then
-        getgenv().StrafeConnection = RunService.RenderStepped:Connect(function()
-            local char = LocalPlayer.Character
-            if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
-            local hum = char.Humanoid
-            local hrp = char.HumanoidRootPart
-            if hum.FloorMaterial == Enum.Material.Air then return end
-            local moveDir = hum.MoveDirection
-            if moveDir.Magnitude > 0.1 then
-                local side = moveDir.Unit:Cross(Vector3.new(0,1,0))
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                    hrp.Velocity = hrp.Velocity + side * (getgenv().StrafePower or 30)
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                    hrp.Velocity = hrp.Velocity - side * (getgenv().StrafePower or 30)
-                end
-            end
-        end)
-    else
-        if getgenv().StrafeConnection then getgenv().StrafeConnection:Disconnect() end
-    end
-end)
-CreateSlider(MovementStrafe, "Strafe Power", 10, 200, 30, function(v) getgenv().StrafePower = v end)
-
-local MovementBhop = CreateSection(MovementContent, "Bunny Hop")
-CreateToggle(MovementBhop, "Bunny Hop (Hold Space)", false, function(state)
-    getgenv().BhopEnabled = state
-    if state then
-        getgenv().BhopConnection = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if not char or not char:FindFirstChild("Humanoid") then return end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) and char.Humanoid.FloorMaterial ~= Enum.Material.Air then
-                char.Humanoid.Jump = true
-            end
-        end)
-    else
-        if getgenv().BhopConnection then getgenv().BhopConnection:Disconnect() end
-    end
-end)
-
-local MovementWater = CreateSection(MovementContent, "Walk on Water")
-CreateToggle(MovementWater, "Walk on Water", false, function(state)
-    getgenv().WaterWalkEnabled = state
-    if state then
-        getgenv().WaterWalkConnection = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local hrp = char.HumanoidRootPart
-                if hrp.Position.Y < 5 then
-                    hrp.CFrame = hrp.CFrame + Vector3.new(0, 0.5, 0)
-                end
-            end
-        end)
-    else
-        if getgenv().WaterWalkConnection then getgenv().WaterWalkConnection:Disconnect() end
-    end
-end)
-
--- PLAYER
-local PlayerInfinite = CreateSection(PlayerContent, "Infinite Jump")
-CreateToggle(PlayerInfinite, "Infinite Jump", false, function(state)
-    getgenv().InfJumpEnabled = state
-    if state then
-        getgenv().InfJumpConnection = UserInputService.JumpRequest:Connect(function()
-            local c = LocalPlayer.Character
-            if c and c:FindFirstChild("Humanoid") then c.Humanoid:ChangeState("Jumping") end
-        end)
-    else
-        if getgenv().InfJumpConnection then getgenv().InfJumpConnection:Disconnect() end
-    end
-end)
-
-local PlayerAntiAFK = CreateSection(PlayerContent, "Anti AFK")
-CreateToggle(PlayerAntiAFK, "Anti AFK", false, function(state)
-    getgenv().AntiAFKEnabled = state
-    if state then
-        getgenv().AntiAFKConnection = LocalPlayer.Idled:Connect(function()
-            local vu = game:GetService("VirtualUser")
-            vu:CaptureController()
-            vu:ClickButton2(Vector2.new())
-        end)
-    else
-        if getgenv().AntiAFKConnection then getgenv().AntiAFKConnection:Disconnect() end
-    end
-end, true)
-
-local PlayerGod = CreateSection(PlayerContent, "God Mode")
-CreateToggle(PlayerGod, "God Mode", false, function(state)
-    getgenv().GodModeEnabled = state
-    if state then
-        local c = LocalPlayer.Character
-        if c and c:FindFirstChild("Humanoid") then
-            getgenv().GodOriginalHP = c.Humanoid.MaxHealth
-        end
-        getgenv().GodConnection = RunService.Heartbeat:Connect(function()
-            local c2 = LocalPlayer.Character
-            if c2 and c2:FindFirstChild("Humanoid") then
-                c2.Humanoid.MaxHealth = math.huge
-                c2.Humanoid.Health = math.huge
-            end
-        end)
-    else
-        if getgenv().GodConnection then getgenv().GodConnection:Disconnect() end
-        local c = LocalPlayer.Character
-        if c and c:FindFirstChild("Humanoid") then
-            local hp = getgenv().GodOriginalHP or 100
-            c.Humanoid.MaxHealth = hp
-            c.Humanoid.Health = hp
-        end
-    end
-end)
-
-local PlayerReset = CreateSection(PlayerContent, "Reset Character")
-CreateButton(PlayerReset, "Reset Character", function()
-    local c = LocalPlayer.Character
-    if c and c:FindFirstChild("Humanoid") then c.Humanoid.Health = 0 end
-end)
-
-local PlayerProximity = CreateSection(PlayerContent, "Auto Interact")
-CreateToggle(PlayerProximity, "Auto Interact (Proximity)", false, function(state)
-    getgenv().AutoInteractEnabled = state
-    if state then
-        getgenv().AutoInteractConnection = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if obj:IsA("ProximityPrompt") and obj.Enabled then
-                    local part = obj.Parent
-                    if part and part:IsA("BasePart") then
-                        local dist = (part.Position - char.HumanoidRootPart.Position).Magnitude
-                        if dist < (obj.MaxActivationDistance or 10) then
-                            pcall(function() fireproximityprompt(obj) end)
+                if hum and hrp and hum.Health > 0 then
+                    if getgenv().PredictAimTeamCheck and p.Team == LocalPlayer.Team then continue end
+                    local targetPart = hitpart == "Head" and p.Character:FindFirstChild("Head") or hrp
+                    if not targetPart then continue end
+                    local sp, on = cam:WorldToViewportPoint(targetPart.Position)
+                    if on then
+                        local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
+                        if d < bestScore and d < fov then
+                            if getgenv().PredictAimWallCheck then
+                                local params = RaycastParams.new()
+                                params.FilterType = Enum.RaycastFilterType.Exclude
+                                params.FilterDescendantsInstances = {myChar, p.Character}
+                                local hit = workspace:Raycast(cam.CFrame.Position, (targetPart.Position - cam.CFrame.Position).Unit * 1000, params)
+                                if hit then continue end
+                            end
+                            bestScore = d
+                            best = p
                         end
                     end
                 end
             end
+        end
+        if best then getgenv().PredictAimTarget = best target = best end
+    end
+    if not target then
+        AimBotInfoLabel.Text = "Auto Predict Time: — (no target)"
+        return
+    end
+
+    local tChar = target.Character
+    if not tChar then return end
+    local tHRP = tChar:FindFirstChild("HumanoidRootPart")
+    if not tHRP then return end
+    local targetPart = hitpart == "Head" and tChar:FindFirstChild("Head") or tHRP
+    if not targetPart then return end
+
+    local aimPos
+    if getgenv().PredictEnabled then
+        local dist = (targetPart.Position - cam.CFrame.Position).Magnitude
+        local bulletSpeed = getgenv().PredictAimBulletSpeed or 1500
+        local ping = GetPing()
+        local autoTime = (dist / bulletSpeed) + (ping / 2000)
+        autoTime = math.clamp(autoTime, 0.02, 0.6)
+        getgenv().PredictAimLastTime = autoTime
+
+        AimBotInfoLabel.Text = string.format("Auto Predict Time: %.3fs  (dist %.0f studs, ping %d ms)", autoTime, dist, ping)
+
+        local vel = tHRP.AssemblyLinearVelocity
+        aimPos = targetPart.Position + vel * autoTime
+    else
+        AimBotInfoLabel.Text = "Predict: OFF — straight aim"
+        aimPos = targetPart.Position
+    end
+
+    local smooth = getgenv().PredictAimSmooth or 1
+    local curCF = cam.CFrame
+    local targetCF = CFrame.new(curCF.Position, aimPos)
+    if smooth <= 1 then
+        cam.CFrame = targetCF
+    else
+        local alpha = math.clamp(dt * (1 / smooth) * 15, 0, 1)
+        cam.CFrame = curCF:Lerp(targetCF, alpha)
+    end
+end)
+
+-- ============ MOVEMENT TAB ============
+local StrafeSection = CreateSection(MovementContent, "Strafe")
+getgenv().StrafeEnabled = false
+getgenv().StrafeSpeed = 35
+
+CreateToggle(StrafeSection, "Strafe Enabled", false, function(state)
+    getgenv().StrafeEnabled = state
+end)
+CreateSlider(StrafeSection, "Strafe Speed", 10, 150, 35, function(v) getgenv().StrafeSpeed = v end)
+
+RunService.Heartbeat:Connect(function()
+    if not getgenv().StrafeEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    local cam = workspace.CurrentCamera
+    local look = cam.CFrame.LookVector
+    look = Vector3.new(look.X, 0, look.Z)
+    if look.Magnitude < 0.01 then return end
+    look = look.Unit
+    local right = Vector3.new(-look.Z, 0, look.X)
+
+    local wishDir = Vector3.new(0, 0, 0)
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then wishDir = wishDir + look end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then wishDir = wishDir - look end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then wishDir = wishDir - right end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then wishDir = wishDir + right end
+
+    if wishDir.Magnitude < 0.01 then return end
+    wishDir = wishDir.Unit
+
+    local speed = getgenv().StrafeSpeed or 35
+    local vel = hrp.AssemblyLinearVelocity
+    hrp.AssemblyLinearVelocity = Vector3.new(wishDir.X * speed, vel.Y, wishDir.Z * speed)
+end)
+
+-- Auto Jump
+local AutoJumpSection = CreateSection(MovementContent, "Auto Jump")
+getgenv().AutoJumpEnabled = false
+
+CreateToggle(AutoJumpSection, "Auto Jump Enabled", false, function(state)
+    getgenv().AutoJumpEnabled = state
+end)
+
+RunService.Heartbeat:Connect(function()
+    if not getgenv().AutoJumpEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    if hum.FloorMaterial ~= Enum.Material.Air then
+        hum.Jump = true
+    end
+end)
+
+-- ---------- FLY (Superman style) ----------
+local FlySection = CreateSection(MovementContent, "Fly (Superman)")
+getgenv().FlyEnabled = false
+getgenv().FlySpeed = 80
+
+CreateToggle(FlySection, "Fly Enabled", false, function(state)
+    getgenv().FlyEnabled = state
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    if state then
+        hum.PlatformStand = true
+
+        local bv = Instance.new("BodyVelocity")
+        bv.Name = "RadioactiveFlyBV"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bv.Parent = hrp
+
+        local bg = Instance.new("BodyGyro")
+        bg.Name = "RadioactiveFlyBG"
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.P = 30000
+        bg.D = 500
+        bg.CFrame = hrp.CFrame
+        bg.Parent = hrp
+    else
+        if hrp:FindFirstChild("RadioactiveFlyBV") then hrp.RadioactiveFlyBV:Destroy() end
+        if hrp:FindFirstChild("RadioactiveFlyBG") then hrp.RadioactiveFlyBG:Destroy() end
+        hum.PlatformStand = false
+    end
+end)
+CreateSlider(FlySection, "Fly Speed", 10, 600, 80, function(v) getgenv().FlySpeed = v end)
+
+RunService.RenderStepped:Connect(function()
+    if not getgenv().FlyEnabled then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not hum then return end
+
+    local bv = hrp:FindFirstChild("RadioactiveFlyBV")
+    local bg = hrp:FindFirstChild("RadioactiveFlyBG")
+    if not bv or not bg then return end
+
+    hum.PlatformStand = true
+
+    local cam = workspace.CurrentCamera
+    local dir = Vector3.new(0, 0, 0)
+    if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+    if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
+
+    local speed = getgenv().FlySpeed or 80
+
+    if dir.Magnitude > 0.01 then
+        dir = dir.Unit
+        bv.Velocity = dir * speed
+        bg.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + dir)
+    else
+        bv.Velocity = Vector3.new(0, 0, 0)
+        bg.CFrame = CFrame.new(hrp.Position) * CFrame.Angles(0, math.atan2(-cam.CFrame.LookVector.X, -cam.CFrame.LookVector.Z), 0)
+    end
+end)
+
+-- RENDER TAB
+local RenderESP = CreateSection(RenderContent, "Player ESP")
+CreateToggle(RenderESP, "ESP Enabled", false, function(state)
+    getgenv().ESPEnabled = state
+    if state then
+        getgenv().ESPObjects = {}
+        getgenv().ESPConnection = task.spawn(function()
+            while getgenv().ESPEnabled do
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character then
+                        local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                        local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+                        if hum and hrp and hum.Health > 0 then
+                            local existing = getgenv().ESPObjects[p]
+                            if existing and existing.Adornee ~= p.Character then
+                                existing:Destroy()
+                                getgenv().ESPObjects[p] = nil
+                                existing = nil
+                            end
+                            if not existing then
+                                local h = Instance.new("Highlight")
+                                h.Adornee = p.Character
+                                h.FillColor = Color3.fromRGB(255, 255, 255)
+                                h.OutlineColor = Color3.fromRGB(0, 0, 0)
+                                h.FillTransparency = 0.5
+                                h.OutlineTransparency = 0
+                                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                                h.Parent = p.Character
+                                getgenv().ESPObjects[p] = h
+                            end
+                        else
+                            local existing = getgenv().ESPObjects[p]
+                            if existing then existing:Destroy() getgenv().ESPObjects[p] = nil end
+                        end
+                    end
+                end
+                for p, o in pairs(getgenv().ESPObjects) do
+                    if not p or not p.Parent or not p.Character or not p.Character.Parent then
+                        pcall(function() o:Destroy() end)
+                        getgenv().ESPObjects[p] = nil
+                    end
+                end
+                task.wait(1)
+            end
         end)
     else
-        if getgenv().AutoInteractConnection then getgenv().AutoInteractConnection:Disconnect() end
+        if getgenv().ESPConnection then
+            pcall(function() task.cancel(getgenv().ESPConnection) end)
+            getgenv().ESPConnection = nil
+        end
+        for _, o in pairs(getgenv().ESPObjects or {}) do pcall(function() o:Destroy() end) end
+        getgenv().ESPObjects = {}
     end
 end, true)
 
--- RENDER
 local RenderFullbright = CreateSection(RenderContent, "Fullbright")
 CreateToggle(RenderFullbright, "Fullbright Enabled", false, function(state)
     getgenv().FullbrightEnabled = state
@@ -1226,46 +1188,116 @@ CreateToggle(RenderFullbright, "Fullbright Enabled", false, function(state)
     end
 end, true)
 
-local RenderESP = CreateSection(RenderContent, "Player ESP")
-CreateToggle(RenderESP, "ESP Enabled", false, function(state)
-    getgenv().ESPEnabled = state
-    if state then
-        getgenv().ESPObjects = {}
-        getgenv().ESPConnection = RunService.RenderStepped:Connect(function()
-            for _, p in ipairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    local isFr = IsFriend(p)
-                    if not getgenv().ESPObjects[p] then
-                        local h = Instance.new("Highlight")
-                        h.Adornee = p.Character
-                        h.FillColor = isFr and Config.FriendColor or Color3.fromRGB(255,0,0)
-                        h.OutlineColor = Color3.fromRGB(255,255,255)
-                        h.FillTransparency = 0.5
-                        h.OutlineTransparency = 0
-                        h.Parent = p.Character
-                        getgenv().ESPObjects[p] = h
-                    else
-                        getgenv().ESPObjects[p].FillColor = isFr and Config.FriendColor or Color3.fromRGB(255,0,0)
-                    end
-                end
-            end
-            for p, o in pairs(getgenv().ESPObjects) do
-                if not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") then
-                    o:Destroy()
-                    getgenv().ESPObjects[p] = nil
-                end
-            end
-        end)
-    else
-        if getgenv().ESPConnection then getgenv().ESPConnection:Disconnect() end
-        for _, o in pairs(getgenv().ESPObjects or {}) do o:Destroy() end
-        getgenv().ESPObjects = {}
-    end
-end, true)
-
 local RenderFOV = CreateSection(RenderContent, "Custom FOV")
 CreateSlider(RenderFOV, "Field of View", 70, 180, 70, function(v)
     if workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = v end
+end)
+
+-- SKYBOX
+local SkyboxSection = CreateSection(RenderContent, "SkyBox")
+local customSkyFolder = nil
+local skyFacesData = {}
+local skyRotationEnabled = false
+local skyRotationSpeed = 3
+local skyRotationAngle = 0
+
+local function ClearCustomSky()
+    for _, d in ipairs(skyFacesData) do pcall(function() d.part:Destroy() end) end
+    skyFacesData = {}
+    if customSkyFolder then pcall(function() customSkyFolder:Destroy() end) customSkyFolder = nil end
+end
+
+local function ApplySkybox(id)
+    ClearCustomSky()
+    if not id or id == "" then return end
+    local assetId = tostring(id):gsub("%s", "")
+    if not assetId:match("^rbxassetid://") then
+        local digits = assetId:gsub("%D", "")
+        if digits == "" then return end
+        assetId = "rbxassetid://" .. digits
+    end
+    local cam = workspace.CurrentCamera
+    local folder = Instance.new("Folder")
+    folder.Name = "RadioactiveSky"
+    folder.Parent = cam
+    customSkyFolder = folder
+    local size = 2000
+    local faceDefs = {
+        {name = "Front", dir = Vector3.new(0, 0, -1), rot = CFrame.Angles(0, math.rad(180), 0)},
+        {name = "Back",  dir = Vector3.new(0, 0, 1),  rot = CFrame.Angles(0, 0, 0)},
+        {name = "Left",  dir = Vector3.new(-1, 0, 0), rot = CFrame.Angles(0, math.rad(90), 0)},
+        {name = "Right", dir = Vector3.new(1, 0, 0),  rot = CFrame.Angles(0, math.rad(-90), 0)},
+        {name = "Up",    dir = Vector3.new(0, 1, 0),  rot = CFrame.Angles(math.rad(90), 0, 0)},
+        {name = "Down",  dir = Vector3.new(0, -1, 0), rot = CFrame.Angles(math.rad(-90), 0, 0)}
+    }
+    for _, def in ipairs(faceDefs) do
+        local p = Instance.new("Part")
+        p.Name = def.name
+        p.Size = Vector3.new(size, size, 1)
+        p.Anchored = true
+        p.CanCollide = false
+        p.CanQuery = false
+        p.CanTouch = false
+        p.CastShadow = false
+        p.Transparency = 1
+        p.Massless = true
+        p.Parent = folder
+        local d = Instance.new("Decal")
+        d.Face = Enum.NormalId.Front
+        d.Texture = assetId
+        d.Parent = p
+        table.insert(skyFacesData, {part = p, baseOffset = def.dir * (size / 2), rot = def.rot})
+    end
+end
+
+local skyRow = Instance.new("Frame")
+skyRow.Size = UDim2.new(1, 0, 0, 32)
+skyRow.BackgroundTransparency = 1
+skyRow.Parent = SkyboxSection
+
+local skyInput = Instance.new("TextBox")
+skyInput.Size = UDim2.new(1, -76, 1, 0)
+skyInput.Position = UDim2.new(0, 0, 0, 0)
+skyInput.BackgroundColor3 = Config.ElementBg
+skyInput.Text = ""
+skyInput.PlaceholderText = "rbxassetid://..."
+skyInput.PlaceholderColor3 = Config.TextDim
+skyInput.TextColor3 = Config.TextColor
+skyInput.Font = Config.Font
+skyInput.TextSize = 12
+skyInput.ClearTextOnFocus = false
+skyInput.Parent = skyRow
+local sic = Instance.new("UICorner") sic.CornerRadius = UDim.new(0, 6) sic.Parent = skyInput
+
+local skyOkBtn = Instance.new("TextButton")
+skyOkBtn.Size = UDim2.new(0, 70, 1, 0)
+skyOkBtn.Position = UDim2.new(1, -70, 0, 0)
+skyOkBtn.BackgroundColor3 = Config.AccentColor
+skyOkBtn.Text = "OK"
+skyOkBtn.TextColor3 = Color3.fromRGB(255,255,255)
+skyOkBtn.Font = Config.FontBold
+skyOkBtn.TextSize = 12
+skyOkBtn.AutoButtonColor = false
+skyOkBtn.Parent = skyRow
+local sokc = Instance.new("UICorner") sokc.CornerRadius = UDim.new(0, 6) sokc.Parent = skyOkBtn
+skyOkBtn.MouseButton1Click:Connect(function() ApplySkybox(skyInput.Text) end)
+
+CreateButton(SkyboxSection, "Change Skybox (Reapply)", function() ApplySkybox(skyInput.Text) end)
+CreateButton(SkyboxSection, "Clear Skybox", function() ClearCustomSky() end)
+CreateToggle(SkyboxSection, "Rotate Skybox", false, function(state) skyRotationEnabled = state end, true)
+CreateSlider(SkyboxSection, "Rotation Speed", 1, 10, 3, function(v) skyRotationSpeed = v end)
+
+RunService.RenderStepped:Connect(function(dt)
+    if #skyFacesData == 0 then return end
+    local cam = workspace.CurrentCamera
+    if skyRotationEnabled then skyRotationAngle = skyRotationAngle + dt * skyRotationSpeed * 0.4 end
+    local camPos = cam.CFrame.Position
+    local rotCF = CFrame.Angles(0, skyRotationAngle, 0)
+    for _, d in ipairs(skyFacesData) do
+        local worldOffset = rotCF * d.baseOffset
+        local partPos = camPos + worldOffset
+        d.part.CFrame = CFrame.new(partPos, camPos) * d.rot
+    end
 end)
 
 local RenderFog = CreateSection(RenderContent, "Custom Fog")
@@ -1297,7 +1329,6 @@ CreateToggle(RenderFog, "Custom Fog Enabled", false, function(state)
     getgenv().FogEnabled = state
     ApplyFog()
 end, true)
-
 CreateSlider(RenderFog, "Red", 0, 255, 200, function(v) getgenv().FogR = v ApplyFog() end)
 CreateSlider(RenderFog, "Green", 0, 255, 200, function(v) getgenv().FogG = v ApplyFog() end)
 CreateSlider(RenderFog, "Blue", 0, 255, 255, function(v) getgenv().FogB = v ApplyFog() end)
@@ -1318,91 +1349,7 @@ CreateToggle(RenderNoFog, "No Fog", false, function(state)
     end
 end, true)
 
-local RenderWorld = CreateSection(RenderContent, "World Customizer")
-
-local WorldStarsFolder = Instance.new("Folder")
-WorldStarsFolder.Name = "RadioactiveStars"
-WorldStarsFolder.Parent = workspace
-
-getgenv().StarsEnabled = false
-getgenv().StarsRate = 35
-getgenv().StarsColor = Color3.fromRGB(255, 255, 255)
-getgenv().StarsSize = 1.5
-getgenv().StarsFallSpeed = 12
-
-local function SpawnStar()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local center = char.HumanoidRootPart.Position
-    local offset = Vector3.new(math.random(-200, 200), math.random(150, 300), math.random(-200, 200))
-    local spawnPos = center + offset
-    local star = Instance.new("Part")
-    star.Shape = Enum.PartType.Ball
-    star.Size = Vector3.new(getgenv().StarsSize or 1.5, getgenv().StarsSize or 1.5, getgenv().StarsSize or 1.5)
-    star.Position = spawnPos
-    star.Anchored = false
-    star.CanCollide = false
-    star.Material = Enum.Material.Neon
-    star.Color = getgenv().StarsColor or Color3.fromRGB(255,255,255)
-    star.Transparency = 0.1
-    star.Parent = WorldStarsFolder
-    local light = Instance.new("PointLight")
-    light.Brightness = 3
-    light.Range = 15
-    light.Color = getgenv().StarsColor or Color3.fromRGB(255,255,255)
-    light.Parent = star
-    star.AssemblyLinearVelocity = Vector3.new(0, -(getgenv().StarsFallSpeed or 12), 0)
-    star.Touched:Connect(function() star:Destroy() end)
-    task.delay(30, function() if star and star.Parent then star:Destroy() end end)
-end
-
-CreateToggle(RenderWorld, "Falling Stars", false, function(state)
-    getgenv().StarsEnabled = state
-    if state then
-        getgenv().StarsThread = task.spawn(function()
-            while getgenv().StarsEnabled do
-                for i = 1, math.max(1, math.floor(getgenv().StarsRate or 35)) do
-                    SpawnStar()
-                    task.wait(1 / (getgenv().StarsRate or 35))
-                end
-            end
-        end)
-    else
-        if getgenv().StarsThread then task.cancel(getgenv().StarsThread) end
-        WorldStarsFolder:ClearAllChildren()
-    end
-end, true)
-
-CreateSlider(RenderWorld, "Stars Rate (per sec)", 1, 100, 35, function(v) getgenv().StarsRate = v end)
-CreateSlider(RenderWorld, "Stars Size x10", 5, 50, 15, function(v) getgenv().StarsSize = v / 10 end)
-CreateSlider(RenderWorld, "Fall Speed", 3, 50, 12, function(v) getgenv().StarsFallSpeed = v end)
-
-CreateButton(RenderWorld, "Stars Color: White", function()
-    getgenv().StarsColor = Color3.fromRGB(255, 255, 255)
-    for _, s in ipairs(WorldStarsFolder:GetChildren()) do
-        if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
-        local l = s:FindFirstChildOfClass("PointLight")
-        if l then l.Color = getgenv().StarsColor end
-    end
-end)
-CreateButton(RenderWorld, "Stars Color: Red", function()
-    getgenv().StarsColor = Color3.fromRGB(255, 60, 60)
-    for _, s in ipairs(WorldStarsFolder:GetChildren()) do
-        if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
-        local l = s:FindFirstChildOfClass("PointLight")
-        if l then l.Color = getgenv().StarsColor end
-    end
-end)
-CreateButton(RenderWorld, "Stars Color: Cyan", function()
-    getgenv().StarsColor = Color3.fromRGB(80, 220, 255)
-    for _, s in ipairs(WorldStarsFolder:GetChildren()) do
-        if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
-        local l = s:FindFirstChildOfClass("PointLight")
-        if l then l.Color = getgenv().StarsColor end
-    end
-end)
-
--- MISC
+-- MISC TAB
 local MiscServerHop = CreateSection(MiscContent, "Server Hop")
 CreateButton(MiscServerHop, "Server Hop", function()
     local TeleportService = game:GetService("TeleportService")
@@ -1417,6 +1364,38 @@ CreateButton(MiscServerHop, "Server Hop", function()
             end
         end
         TeleportService:Teleport(game.PlaceId, LocalPlayer)
+    end)
+end)
+
+local MiscSmartJoin = CreateSection(MiscContent, "Smart Server Join")
+CreateButton(MiscSmartJoin, "Low Ping Join", function()
+    local TeleportService = game:GetService("TeleportService")
+    pcall(function()
+        local data = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+        if data and data.data then
+            local best, bestPing = nil, math.huge
+            for _, s in ipairs(data.data) do
+                if s.id ~= game.JobId and s.playing < s.maxPlayers then
+                    if s.ping and s.ping < bestPing then bestPing = s.ping best = s end
+                end
+            end
+            if best then TeleportService:TeleportToPlaceInstance(game.PlaceId, best.id, LocalPlayer) end
+        end
+    end)
+end)
+CreateButton(MiscSmartJoin, "Low Player Join", function()
+    local TeleportService = game:GetService("TeleportService")
+    pcall(function()
+        local data = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+        if data and data.data then
+            local best, bestPlayers = nil, math.huge
+            for _, s in ipairs(data.data) do
+                if s.id ~= game.JobId and s.playing < s.maxPlayers then
+                    if s.playing < bestPlayers then bestPlayers = s.playing best = s end
+                end
+            end
+            if best then TeleportService:TeleportToPlaceInstance(game.PlaceId, best.id, LocalPlayer) end
+        end
     end)
 end)
 
@@ -1439,38 +1418,61 @@ CreateToggle(MiscFPSBoost, "FPS Boost", false, function(state)
     end
 end, true)
 
-local MiscAntiFling = CreateSection(MiscContent, "Anti Fling")
-CreateToggle(MiscAntiFling, "Anti Fling", false, function(state)
-    getgenv().AntiFlingEnabled = state
+local MiscAntiAFK = CreateSection(MiscContent, "Anti AFK")
+CreateToggle(MiscAntiAFK, "Anti AFK", false, function(state)
+    getgenv().AntiAFKEnabled = state
     if state then
-        getgenv().AntiFlingConnection = RunService.Heartbeat:Connect(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local vel = char.HumanoidRootPart.AssemblyLinearVelocity
-                if vel.Magnitude > 200 then
-                    char.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-                end
-            end
+        getgenv().AntiAFKConnection = LocalPlayer.Idled:Connect(function()
+            local vu = game:GetService("VirtualUser")
+            vu:CaptureController()
+            vu:ClickButton2(Vector2.new())
         end)
     else
-        if getgenv().AntiFlingConnection then getgenv().AntiFlingConnection:Disconnect() end
+        if getgenv().AntiAFKConnection then getgenv().AntiAFKConnection:Disconnect() end
     end
 end, true)
 
-local MiscClickTP = CreateSection(MiscContent, "Click Teleport")
-CreateToggle(MiscClickTP, "Click Teleport (Ctrl+Click)", false, function(state)
-    getgenv().ClickTPEnabled = state
-end)
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if not getgenv().ClickTPEnabled then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-        local mouse = LocalPlayer:GetMouse()
-        local target = mouse.Hit
-        if target then
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                char.HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 3, 0))
+-- ============ NO PLAYER COLLISION ============
+local MiscNoPlayerCollision = CreateSection(MiscContent, "No Player Collision")
+getgenv().NoPlayerCollisionEnabled = false
+
+local function ApplyNoCollisionToChar(char, disable)
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            if disable then
+                if part.CanCollide then
+                    part:SetAttribute("RadioCollideOrig", true)
+                    part.CanCollide = false
+                end
+            else
+                if part:GetAttribute("RadioCollideOrig") then
+                    part.CanCollide = true
+                    part:SetAttribute("RadioCollideOrig", nil)
+                end
+            end
+        end
+    end
+end
+
+CreateToggle(MiscNoPlayerCollision, "No Player Collision", false, function(state)
+    getgenv().NoPlayerCollisionEnabled = state
+    if not state then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character then
+                ApplyNoCollisionToChar(p.Character, false)
+            end
+        end
+    end
+end, true)
+
+task.spawn(function()
+    while true do
+        task.wait(0.15)
+        if getgenv().NoPlayerCollisionEnabled then
+            for _, p in ipairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character then
+                    ApplyNoCollisionToChar(p.Character, true)
+                end
             end
         end
     end
@@ -1482,7 +1484,7 @@ local RefreshFriendsUI, RefreshPointsUI, RefreshWorldMarkers
 local PlayersListSection = CreateSection(FriendsContent, "Players on Server")
 local PlayersScroll = Instance.new("ScrollingFrame")
 PlayersScroll.Size = UDim2.new(1, 0, 0, 200)
-PlayersScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+PlayersScroll.BackgroundColor3 = Color3.fromRGB(15,15,15)
 PlayersScroll.BorderSizePixel = 0
 PlayersScroll.ScrollBarThickness = 4
 PlayersScroll.ScrollBarImageColor3 = Config.AccentColor
@@ -1490,14 +1492,13 @@ PlayersScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 PlayersScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 PlayersScroll.Parent = PlayersListSection
 local ps_c = Instance.new("UICorner") ps_c.CornerRadius = UDim.new(0, 6) ps_c.Parent = PlayersScroll
-local ps_s = Instance.new("UIStroke") ps_s.Color = Color3.fromRGB(45,45,45) ps_s.Thickness = 1 ps_s.Parent = PlayersScroll
 local ps_pad = Instance.new("UIPadding") ps_pad.PaddingLeft = UDim.new(0, 6) ps_pad.PaddingRight = UDim.new(0, 6) ps_pad.PaddingTop = UDim.new(0, 6) ps_pad.Parent = PlayersScroll
 local ps_lay = Instance.new("UIListLayout") ps_lay.SortOrder = Enum.SortOrder.LayoutOrder ps_lay.Padding = UDim.new(0, 4) ps_lay.Parent = PlayersScroll
 
 local FriendListSection = CreateSection(FriendsContent, "Friend List")
 local FriendsScroll = Instance.new("ScrollingFrame")
 FriendsScroll.Size = UDim2.new(1, 0, 0, 200)
-FriendsScroll.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+FriendsScroll.BackgroundColor3 = Color3.fromRGB(15,15,15)
 FriendsScroll.BorderSizePixel = 0
 FriendsScroll.ScrollBarThickness = 4
 FriendsScroll.ScrollBarImageColor3 = Config.FriendColor
@@ -1505,7 +1506,6 @@ FriendsScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 FriendsScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 FriendsScroll.Parent = FriendListSection
 local fs_c = Instance.new("UICorner") fs_c.CornerRadius = UDim.new(0, 6) fs_c.Parent = FriendsScroll
-local fs_s = Instance.new("UIStroke") fs_s.Color = Color3.fromRGB(45,45,45) fs_s.Thickness = 1 fs_s.Parent = FriendsScroll
 local fs_pad = Instance.new("UIPadding") fs_pad.PaddingLeft = UDim.new(0, 6) fs_pad.PaddingRight = UDim.new(0, 6) fs_pad.PaddingTop = UDim.new(0, 6) fs_pad.Parent = FriendsScroll
 local fs_lay = Instance.new("UIListLayout") fs_lay.SortOrder = Enum.SortOrder.LayoutOrder fs_lay.Padding = UDim.new(0, 4) fs_lay.Parent = FriendsScroll
 
@@ -1513,9 +1513,9 @@ local function MakeBtn(parent, text, color, callback, width, position)
     local B = Instance.new("TextButton")
     B.Size = UDim2.new(0, width or 28, 0, 22)
     B.Position = position or UDim2.new(1, -34, 0.5, -11)
-    B.BackgroundColor3 = color or Color3.fromRGB(60, 30, 30)
+    B.BackgroundColor3 = color or Color3.fromRGB(60,30,30)
     B.Text = text
-    B.TextColor3 = Color3.fromRGB(255, 255, 255)
+    B.TextColor3 = Color3.fromRGB(255,255,255)
     B.Font = Config.FontBold
     B.TextSize = 11
     B.AutoButtonColor = false
@@ -1526,14 +1526,12 @@ local function MakeBtn(parent, text, color, callback, width, position)
 end
 
 RefreshFriendsUI = function()
-    for _, c in ipairs(PlayersScroll:GetChildren()) do
-        if c:IsA("Frame") then c:Destroy() end
-    end
+    for _, c in ipairs(PlayersScroll:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and not IsFriend(p) then
             local row = Instance.new("Frame")
             row.Size = UDim2.new(1, 0, 0, 28)
-            row.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+            row.BackgroundColor3 = Color3.fromRGB(24,24,24)
             row.BorderSizePixel = 0
             row.Parent = PlayersScroll
             local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 4) rc.Parent = row
@@ -1547,21 +1545,18 @@ RefreshFriendsUI = function()
             nameLbl.TextSize = 13
             nameLbl.TextXAlignment = Enum.TextXAlignment.Left
             nameLbl.Parent = row
-            MakeBtn(row, "+", Color3.fromRGB(40, 90, 40), function()
+            MakeBtn(row, "+", Color3.fromRGB(40,90,40), function()
                 FriendList[string.lower(p.Name)] = p.Name
                 SaveFriends()
                 RefreshFriendsUI()
             end, 28)
         end
     end
-
-    for _, c in ipairs(FriendsScroll:GetChildren()) do
-        if c:IsA("Frame") then c:Destroy() end
-    end
+    for _, c in ipairs(FriendsScroll:GetChildren()) do if c:IsA("Frame") then c:Destroy() end end
     for lname, orig in pairs(FriendList) do
         local row = Instance.new("Frame")
         row.Size = UDim2.new(1, 0, 0, 28)
-        row.BackgroundColor3 = Color3.fromRGB(24, 24, 24)
+        row.BackgroundColor3 = Color3.fromRGB(24,24,24)
         row.BorderSizePixel = 0
         row.Parent = FriendsScroll
         local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 4) rc.Parent = row
@@ -1575,7 +1570,7 @@ RefreshFriendsUI = function()
         nameLbl.TextSize = 13
         nameLbl.TextXAlignment = Enum.TextXAlignment.Left
         nameLbl.Parent = row
-        MakeBtn(row, "M", Color3.fromRGB(40, 60, 100), function()
+        MakeBtn(row, "M", Color3.fromRGB(40,60,100), function()
             local plr = Players:FindFirstChild(orig)
             if plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
                 PointIdCounter = PointIdCounter + 1
@@ -1585,7 +1580,7 @@ RefreshFriendsUI = function()
                 RefreshPointsUI()
             end
         end, 28, UDim2.new(1, -66, 0.5, -11))
-        MakeBtn(row, "X", Color3.fromRGB(60, 30, 30), function()
+        MakeBtn(row, "X", Color3.fromRGB(60,30,30), function()
             FriendList[lname] = nil
             SaveFriends()
             RefreshFriendsUI()
@@ -1594,7 +1589,9 @@ RefreshFriendsUI = function()
 end
 
 -- POINTS TAB
-local SetPointSection = CreateSection(PointsContent, "Set Point")
+local SetPointSection = CreateSection(PointsContent, "Hotkey: Place Point")
+local PointsColorSection = CreateSection(PointsContent, "Point Color (RGB)")
+local SetPointCoordsSection = CreateSection(PointsContent, "Place by Coordinates")
 local PointsListSection = CreateSection(PointsContent, "Points List")
 
 local WorldFolder = Instance.new("Folder")
@@ -1602,117 +1599,80 @@ WorldFolder.Name = "RadioactivePoints"
 WorldFolder.Parent = workspace
 
 local function CreateWorldMarker(point)
-    local model = Instance.new("Model")
-    model.Name = "RadioactivePoint_" .. point.id
-    model.Parent = WorldFolder
-
-    local beam = Instance.new("Part")
-    beam.Name = "Beam"
-    beam.Size = Vector3.new(0.15, 80, 0.15)
-    beam.Position = point.pos + Vector3.new(0, 40, 0)
-    beam.Anchored = true
-    beam.CanCollide = false
-    beam.Material = Enum.Material.Neon
-    beam.Color = Color3.fromRGB(255, 255, 255)
-    beam.Transparency = 0.5
-    beam.Parent = model
-
-    local top = Instance.new("Part")
-    top.Name = "Top"
-    top.Shape = Enum.PartType.Ball
-    top.Size = Vector3.new(1.2, 1.2, 1.2)
-    top.Position = point.pos + Vector3.new(0, 3, 0)
-    top.Anchored = true
-    top.CanCollide = false
-    top.Material = Enum.Material.Neon
-    top.Color = Color3.fromRGB(255, 255, 255)
-    top.Parent = model
-
-    local ground = Instance.new("Part")
-    ground.Name = "Ground"
-    ground.Shape = Enum.PartType.Cylinder
-    ground.Size = Vector3.new(0.15, 5, 5)
-    ground.CFrame = CFrame.new(point.pos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
-    ground.Anchored = true
-    ground.CanCollide = false
-    ground.Material = Enum.Material.Neon
-    ground.Color = Color3.fromRGB(255, 255, 255)
-    ground.Transparency = 0.4
-    ground.Parent = model
-
+    local part = Instance.new("Part")
+    part.Name = "RadioactivePoint_" .. point.id
+    part.Size = Vector3.new(0.1, 0.1, 0.1)
+    part.Position = point.pos
+    part.Anchored = true
+    part.CanCollide = false
+    part.Transparency = 1
+    part.Parent = WorldFolder
     local billboard = Instance.new("BillboardGui")
-    billboard.Size = UDim2.new(0, 220, 0, 60)
-    billboard.StudsOffsetWorldSpace = Vector3.new(0, 5, 0)
+    billboard.Name = "PointBB"
+    billboard.Size = UDim2.new(0, 160, 0, 160)
+    billboard.StudsOffsetWorldSpace = Vector3.new(0, 3, 0)
     billboard.AlwaysOnTop = true
-    billboard.Parent = top
-
-    local bgFrame = Instance.new("Frame")
-    bgFrame.Size = UDim2.new(1, -20, 1, -10)
-    bgFrame.Position = UDim2.new(0, 10, 0, 5)
-    bgFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    bgFrame.BackgroundTransparency = 0.35
-    bgFrame.BorderSizePixel = 0
-    bgFrame.Parent = billboard
-    local bgc = Instance.new("UICorner") bgc.CornerRadius = UDim.new(0, 8) bgc.Parent = bgFrame
-    local bgs = Instance.new("UIStroke") bgs.Color = Color3.fromRGB(255, 255, 255) bgs.Thickness = 1.5 bgs.Parent = bgFrame
-
+    billboard.MaxDistance = 1e9
+    billboard.LightInfluence = 0
+    billboard.Parent = part
+    local outerRing = Instance.new("Frame")
+    outerRing.Size = UDim2.new(0, 22, 0, 22)
+    outerRing.AnchorPoint = Vector2.new(0.5, 0.5)
+    outerRing.Position = UDim2.new(0.5, 0, 0.5, 0)
+    outerRing.BackgroundTransparency = 1
+    outerRing.Parent = billboard
+    local orc = Instance.new("UICorner") orc.CornerRadius = UDim.new(1, 0) orc.Parent = outerRing
+    local ors = Instance.new("UIStroke") ors.Color = Color3.fromRGB(0,0,0) ors.Thickness = 5 ors.Parent = outerRing
+    local innerRing = Instance.new("Frame")
+    innerRing.Size = UDim2.new(0, 16, 0, 16)
+    innerRing.AnchorPoint = Vector2.new(0.5, 0.5)
+    innerRing.Position = UDim2.new(0.5, 0, 0.5, 0)
+    innerRing.BackgroundTransparency = 1
+    innerRing.Parent = billboard
+    local irc = Instance.new("UICorner") irc.CornerRadius = UDim.new(1, 0) irc.Parent = innerRing
+    local irs = Instance.new("UIStroke") irs.Color = GetPointColor() irs.Thickness = 2.5 irs.Parent = innerRing
     local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(1, -10, 0, 22)
-    nameLbl.Position = UDim2.new(0, 5, 0, 3)
+    nameLbl.Size = UDim2.new(1, 0, 0, 16)
+    nameLbl.AnchorPoint = Vector2.new(0.5, 0.5)
+    nameLbl.Position = UDim2.new(0.5, 0, 0.5, -22)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = point.name
-    nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLbl.TextColor3 = GetPointColor()
     nameLbl.TextStrokeTransparency = 0
+    nameLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0)
     nameLbl.Font = Config.FontBold
-    nameLbl.TextSize = 15
-    nameLbl.Parent = bgFrame
-
+    nameLbl.TextSize = 13
+    nameLbl.Parent = billboard
     local distLbl = Instance.new("TextLabel")
-    distLbl.Size = UDim2.new(1, -10, 0, 18)
-    distLbl.Position = UDim2.new(0, 5, 0, 25)
+    distLbl.Size = UDim2.new(1, 0, 0, 16)
+    distLbl.AnchorPoint = Vector2.new(0.5, 0.5)
+    distLbl.Position = UDim2.new(0.5, 0, 0.5, 20)
     distLbl.BackgroundTransparency = 1
-    distLbl.Text = "0 studs"
-    distLbl.TextColor3 = Color3.fromRGB(255, 100, 100)
+    distLbl.Text = "0m"
+    distLbl.TextColor3 = GetPointColor()
     distLbl.TextStrokeTransparency = 0
+    distLbl.TextStrokeColor3 = Color3.fromRGB(0,0,0)
     distLbl.Font = Config.Font
     distLbl.TextSize = 12
-    distLbl.Parent = bgFrame
-
-    local spinConn = RunService.Heartbeat:Connect(function(dt)
-        if top and top.Parent then
-            top.CFrame = top.CFrame * CFrame.Angles(0, math.rad(120 * dt), 0)
-        end
-    end)
-
-    local visible = point.visible ~= false
-    beam.Transparency = visible and 0.5 or 1
-    top.Transparency = visible and 0 or 1
-    ground.Transparency = visible and 0.4 or 1
-    billboard.Enabled = visible
-
-    return {model = model, beam = beam, top = top, ground = ground, billboard = billboard, nameLbl = nameLbl, distLbl = distLbl, spinConn = spinConn, pos = point.pos}
+    distLbl.Parent = billboard
+    billboard.Enabled = point.visible ~= false
+    return {part = part, irs = irs, nameLbl = nameLbl, distLbl = distLbl, billboard = billboard, pos = point.pos}
 end
 
 local WorldMarkers = {}
-
 RefreshWorldMarkers = function()
     for id, m in pairs(WorldMarkers) do
-        if not PointsList[id] then
-            m.spinConn:Disconnect()
-            m.model:Destroy()
-            WorldMarkers[id] = nil
-        end
+        if not PointsList[id] then m.part:Destroy() WorldMarkers[id] = nil end
     end
     for id, point in pairs(PointsList) do
         if not WorldMarkers[id] then
             WorldMarkers[id] = CreateWorldMarker(point)
         else
             local m = WorldMarkers[id]
-            m.beam.Position = point.pos + Vector3.new(0, 40, 0)
-            m.top.Position = point.pos + Vector3.new(0, 3, 0)
-            m.ground.CFrame = CFrame.new(point.pos + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.rad(90))
+            m.part.Position = point.pos
             m.nameLbl.Text = point.name
             m.pos = point.pos
+            m.billboard.Enabled = point.visible ~= false
         end
     end
 end
@@ -1721,157 +1681,85 @@ local function ApplyPointVisibility(id)
     local m = WorldMarkers[id]
     local p = PointsList[id]
     if not m or not p then return end
-    local visible = p.visible ~= false
-    m.beam.Transparency = visible and 0.5 or 1
-    m.top.Transparency = visible and 0 or 1
-    m.ground.Transparency = visible and 0.4 or 1
-    m.billboard.Enabled = visible
+    m.billboard.Enabled = p.visible ~= false
 end
 
-RefreshPointsUI = function()
-    for _, c in ipairs(PointsListSection:GetChildren()) do
-        if c:IsA("Frame") and c.Name == "PointRow" then c:Destroy() end
+local function UpdatePointColor()
+    local c = GetPointColor()
+    for _, m in pairs(WorldMarkers) do
+        if m.irs then m.irs.Color = c end
+        if m.nameLbl then m.nameLbl.TextColor3 = c end
+        if m.distLbl then m.distLbl.TextColor3 = c end
     end
-    for id, point in pairs(PointsList) do
-        local row = Instance.new("Frame")
-        row.Name = "PointRow"
-        row.Size = UDim2.new(1, 0, 0, 44)
-        row.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-        row.BorderSizePixel = 0
-        row.Parent = PointsListSection
-        local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 5) rc.Parent = row
-
-        local topRow = Instance.new("Frame")
-        topRow.Size = UDim2.new(1, 0, 0, 22)
-        topRow.BackgroundTransparency = 1
-        topRow.Parent = row
-
-        local inp = Instance.new("TextBox")
-        inp.Size = UDim2.new(1, -200, 1, 0)
-        inp.Position = UDim2.new(0, 4, 0, 0)
-        inp.BackgroundColor3 = Config.ElementBg
-        inp.Text = point.name
-        inp.TextColor3 = Config.TextColor
-        inp.Font = Config.Font
-        inp.TextSize = 11
-        inp.ClearTextOnFocus = false
-        inp.Parent = topRow
-        local ic = Instance.new("UICorner") ic.CornerRadius = UDim.new(0, 4) ic.Parent = inp
-        inp.FocusLost:Connect(function()
-            point.name = inp.Text
-            SavePoints()
-            local m = WorldMarkers[id]
-            if m then m.nameLbl.Text = point.name end
-        end)
-
-        local copyBtn = Instance.new("TextButton")
-        copyBtn.Size = UDim2.new(0, 28, 1, 0)
-        copyBtn.Position = UDim2.new(1, -190, 0, 0)
-        copyBtn.BackgroundColor3 = Color3.fromRGB(40, 60, 100)
-        copyBtn.Text = "C"
-        copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        copyBtn.Font = Config.FontBold
-        copyBtn.TextSize = 11
-        copyBtn.AutoButtonColor = false
-        copyBtn.Parent = topRow
-        local cc = Instance.new("UICorner") cc.CornerRadius = UDim.new(0, 4) cc.Parent = copyBtn
-        copyBtn.MouseButton1Click:Connect(function()
-            local coordStr = string.format("x%d y%d z%d", math.floor(point.pos.X), math.floor(point.pos.Y), math.floor(point.pos.Z))
-            pcall(function() setclipboard(coordStr) end)
-        end)
-
-        local delBtn = Instance.new("TextButton")
-        delBtn.Size = UDim2.new(0, 28, 1, 0)
-        delBtn.Position = UDim2.new(1, -158, 0, 0)
-        delBtn.BackgroundColor3 = Color3.fromRGB(60, 30, 30)
-        delBtn.Text = "X"
-        delBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        delBtn.Font = Config.FontBold
-        delBtn.TextSize = 11
-        delBtn.AutoButtonColor = false
-        delBtn.Parent = topRow
-        local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(0, 4) dc.Parent = delBtn
-        delBtn.MouseButton1Click:Connect(function()
-            PointsList[id] = nil
-            if WorldMarkers[id] then
-                WorldMarkers[id].spinConn:Disconnect()
-                WorldMarkers[id].model:Destroy()
-                WorldMarkers[id] = nil
-            end
-            SavePoints()
-            RefreshPointsUI()
-        end)
-
-        local BindBtn = Instance.new("TextButton")
-        BindBtn.Size = UDim2.new(0, 55, 1, 0)
-        BindBtn.Position = UDim2.new(1, -126, 0, 0)
-        BindBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        BindBtn.Text = "[Bind]"
-        BindBtn.TextColor3 = Color3.fromRGB(160, 160, 160)
-        BindBtn.Font = Config.Font
-        BindBtn.TextSize = 10
-        BindBtn.AutoButtonColor = false
-        BindBtn.Parent = topRow
-        local bbc = Instance.new("UICorner") bbc.CornerRadius = UDim.new(0, 4) bbc.Parent = BindBtn
-        local bbs = Instance.new("UIStroke") bbs.Color = Color3.fromRGB(60, 60, 60) bbs.Thickness = 1 bbs.Parent = BindBtn
-
-        local UnbindBtn = Instance.new("TextButton")
-        UnbindBtn.Size = UDim2.new(0, 18, 1, 0)
-        UnbindBtn.Position = UDim2.new(1, -68, 0, 0)
-        UnbindBtn.BackgroundColor3 = Color3.fromRGB(50, 25, 25)
-        UnbindBtn.Text = "x"
-        UnbindBtn.TextColor3 = Color3.fromRGB(255, 130, 130)
-        UnbindBtn.Font = Config.FontBold
-        UnbindBtn.TextSize = 11
-        UnbindBtn.AutoButtonColor = false
-        UnbindBtn.Parent = topRow
-        local ubc = Instance.new("UICorner") ubc.CornerRadius = UDim.new(0, 4) ubc.Parent = UnbindBtn
-        local ubs = Instance.new("UIStroke") ubs.Color = Color3.fromRGB(70, 40, 40) ubs.Thickness = 1 ubs.Parent = UnbindBtn
-
-        local bindId = "point_" .. id
-        local bindData = {
-            key = nil,
-            label = BindBtn,
-            name = "POINT " .. id,
-            toggle = function()
-                point.visible = not (point.visible ~= false)
-                ApplyPointVisibility(id)
-            end,
-            getState = function() return point.visible ~= false end
-        }
-        KeybindData[bindId] = bindData
-
-        BindBtn.MouseButton1Click:Connect(function()
-            BindingTarget = bindId
-            BindBtn.Text = "[...]"
-            BindBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
-        end)
-        UnbindBtn.MouseButton1Click:Connect(function()
-            bindData.key = nil
-            BindBtn.Text = "[Bind]"
-            BindBtn.TextColor3 = Color3.fromRGB(160, 160, 160)
-            BindingTarget = nil
-            RefreshKeybindsHUD()
-        end)
-
-        local botRow = Instance.new("Frame")
-        botRow.Size = UDim2.new(1, 0, 0, 22)
-        botRow.Position = UDim2.new(0, 0, 0, 22)
-        botRow.BackgroundTransparency = 1
-        botRow.Parent = row
-
-        local coordLbl = Instance.new("TextLabel")
-        coordLbl.Size = UDim2.new(1, -10, 1, 0)
-        coordLbl.Position = UDim2.new(0, 5, 0, 0)
-        coordLbl.BackgroundTransparency = 1
-        coordLbl.Text = string.format("x%d  y%d  z%d", math.floor(point.pos.X), math.floor(point.pos.Y), math.floor(point.pos.Z))
-        coordLbl.TextColor3 = Color3.fromRGB(160, 160, 160)
-        coordLbl.Font = Config.Font
-        coordLbl.TextSize = 10
-        coordLbl.TextXAlignment = Enum.TextXAlignment.Left
-        coordLbl.Parent = botRow
-    end
+    for _, df in pairs(MiniMapPointDots) do df.BackgroundColor3 = c end
 end
+
+CreateSlider(PointsColorSection, "Red", 0, 255, 255, function(v) getgenv().PointColorR = v UpdatePointColor() end)
+CreateSlider(PointsColorSection, "Green", 0, 255, 255, function(v) getgenv().PointColorG = v UpdatePointColor() end)
+CreateSlider(PointsColorSection, "Blue", 0, 255, 255, function(v) getgenv().PointColorB = v UpdatePointColor() end)
+
+local PlacePointRow = Instance.new("Frame")
+PlacePointRow.Size = UDim2.new(1, 0, 0, 25)
+PlacePointRow.BackgroundTransparency = 1
+PlacePointRow.Parent = SetPointSection
+local PlacePointLbl = Instance.new("TextLabel")
+PlacePointLbl.Size = UDim2.new(1, -150, 1, 0)
+PlacePointLbl.BackgroundTransparency = 1
+PlacePointLbl.Text = "Place Point (hotkey)"
+PlacePointLbl.TextColor3 = Config.TextColor
+PlacePointLbl.Font = Config.Font
+PlacePointLbl.TextSize = 14
+PlacePointLbl.TextXAlignment = Enum.TextXAlignment.Left
+PlacePointLbl.Parent = PlacePointRow
+local PlaceBindBtn = Instance.new("TextButton")
+PlaceBindBtn.Size = UDim2.new(0, 55, 0, 20)
+PlaceBindBtn.Position = UDim2.new(1, -120, 0.5, -10)
+PlaceBindBtn.BackgroundColor3 = Color3.fromRGB(40,40,40)
+PlaceBindBtn.Text = "[Bind]"
+PlaceBindBtn.TextColor3 = Color3.fromRGB(160,160,160)
+PlaceBindBtn.Font = Config.Font
+PlaceBindBtn.TextSize = 11
+PlaceBindBtn.AutoButtonColor = false
+PlaceBindBtn.Parent = PlacePointRow
+local PBBc = Instance.new("UICorner") PBBc.CornerRadius = UDim.new(0, 4) PBBc.Parent = PlaceBindBtn
+local PlaceUnbindBtn = Instance.new("TextButton")
+PlaceUnbindBtn.Size = UDim2.new(0, 18, 0, 20)
+PlaceUnbindBtn.Position = UDim2.new(1, -62, 0.5, -10)
+PlaceUnbindBtn.BackgroundColor3 = Color3.fromRGB(50,25,25)
+PlaceUnbindBtn.Text = "x"
+PlaceUnbindBtn.TextColor3 = Color3.fromRGB(255,130,130)
+PlaceUnbindBtn.Font = Config.FontBold
+PlaceUnbindBtn.TextSize = 12
+PlaceUnbindBtn.AutoButtonColor = false
+PlaceUnbindBtn.Parent = PlacePointRow
+local PUBc = Instance.new("UICorner") PUBc.CornerRadius = UDim.new(0, 4) PUBc.Parent = PlaceUnbindBtn
+
+local placePointBindData = {
+    key = nil, label = PlaceBindBtn, name = "PLACE POINT",
+    toggle = function()
+        local c = LocalPlayer.Character
+        if not c or not c:FindFirstChild("HumanoidRootPart") then return end
+        PointIdCounter = PointIdCounter + 1
+        PointsList[PointIdCounter] = {id = PointIdCounter, name = "Point " .. PointIdCounter, pos = c.HumanoidRootPart.Position, visible = true}
+        SavePoints()
+        RefreshWorldMarkers()
+        RefreshPointsUI()
+    end,
+    getState = function() return false end
+}
+KeybindData["place_point_hotkey"] = placePointBindData
+PlaceBindBtn.MouseButton1Click:Connect(function()
+    BindingTarget = "place_point_hotkey"
+    PlaceBindBtn.Text = "[...]"
+    PlaceBindBtn.TextColor3 = Color3.fromRGB(255,200,0)
+end)
+PlaceUnbindBtn.MouseButton1Click:Connect(function()
+    placePointBindData.key = nil
+    PlaceBindBtn.Text = "[Bind]"
+    PlaceBindBtn.TextColor3 = Color3.fromRGB(160,160,160)
+    BindingTarget = nil
+    RefreshKeybindsHUD()
+end)
 
 CreateButton(SetPointSection, "Create Point at My Position", function()
     local c = LocalPlayer.Character
@@ -1891,25 +1779,118 @@ CoordLabel2.TextColor3 = Config.TextDim
 CoordLabel2.Font = Config.Font
 CoordLabel2.TextSize = 12
 CoordLabel2.TextXAlignment = Enum.TextXAlignment.Left
-CoordLabel2.Parent = SetPointSection
-
-local _, CoordXInput, CoordYInput, CoordZInput = CreateXYZRow(SetPointSection)
-
-CreateButton(SetPointSection, "Create Point by Coordinates", function()
+CoordLabel2.Parent = SetPointCoordsSection
+local _, CoordXInput, CoordYInput, CoordZInput = CreateXYZRow(SetPointCoordsSection)
+CreateButton(SetPointCoordsSection, "Create Point by Coordinates", function()
     local x = tonumber(CoordXInput.Text)
     local y = tonumber(CoordYInput.Text)
     local z = tonumber(CoordZInput.Text)
     if x and y and z then
         PointIdCounter = PointIdCounter + 1
-        PointsList[PointIdCounter] = {id = PointIdCounter, name = "Point " .. PointIdCounter, pos = Vector3.new(x, y, z), visible = true}
+        PointsList[PointIdCounter] = {id = PointIdCounter, name = "Point " .. PointIdCounter, pos = Vector3.new(x,y,z), visible = true}
         SavePoints()
         RefreshWorldMarkers()
         RefreshPointsUI()
-        CoordXInput.Text = ""
-        CoordYInput.Text = ""
-        CoordZInput.Text = ""
+        CoordXInput.Text = "" CoordYInput.Text = "" CoordZInput.Text = ""
     end
 end)
+
+RefreshPointsUI = function()
+    for _, c in ipairs(PointsListSection:GetChildren()) do
+        if c:IsA("Frame") and c.Name == "PointRow" then c:Destroy() end
+    end
+    for id, point in pairs(PointsList) do
+        local row = Instance.new("Frame")
+        row.Name = "PointRow"
+        row.Size = UDim2.new(1, 0, 0, 50)
+        row.BackgroundColor3 = Color3.fromRGB(28,28,28)
+        row.BorderSizePixel = 0
+        row.Parent = PointsListSection
+        local rc = Instance.new("UICorner") rc.CornerRadius = UDim.new(0, 5) rc.Parent = row
+        local topRow = Instance.new("Frame")
+        topRow.Size = UDim2.new(1, 0, 0, 26)
+        topRow.BackgroundTransparency = 1
+        topRow.Parent = row
+        local inp = Instance.new("TextBox")
+        inp.Size = UDim2.new(1, -100, 1, 0)
+        inp.Position = UDim2.new(0, 4, 0, 0)
+        inp.BackgroundColor3 = Config.ElementBg
+        inp.Text = point.name
+        inp.TextColor3 = Config.TextColor
+        inp.Font = Config.Font
+        inp.TextSize = 12
+        inp.ClearTextOnFocus = false
+        inp.Parent = topRow
+        local ic = Instance.new("UICorner") ic.CornerRadius = UDim.new(0, 4) ic.Parent = inp
+        inp.FocusLost:Connect(function()
+            point.name = inp.Text
+            SavePoints()
+            local m = WorldMarkers[id]
+            if m then m.nameLbl.Text = point.name end
+        end)
+        local copyBtn = Instance.new("TextButton")
+        copyBtn.Size = UDim2.new(0, 28, 1, 0)
+        copyBtn.Position = UDim2.new(1, -92, 0, 0)
+        copyBtn.BackgroundColor3 = Color3.fromRGB(40,60,100)
+        copyBtn.Text = "C"
+        copyBtn.TextColor3 = Color3.fromRGB(255,255,255)
+        copyBtn.Font = Config.FontBold
+        copyBtn.TextSize = 11
+        copyBtn.AutoButtonColor = false
+        copyBtn.Parent = topRow
+        local cc = Instance.new("UICorner") cc.CornerRadius = UDim.new(0, 4) cc.Parent = copyBtn
+        copyBtn.MouseButton1Click:Connect(function()
+            pcall(function() setclipboard(string.format("x%d y%d z%d", math.floor(point.pos.X), math.floor(point.pos.Y), math.floor(point.pos.Z))) end)
+        end)
+        local delBtn = Instance.new("TextButton")
+        delBtn.Size = UDim2.new(0, 28, 1, 0)
+        delBtn.Position = UDim2.new(1, -60, 0, 0)
+        delBtn.BackgroundColor3 = Color3.fromRGB(60,30,30)
+        delBtn.Text = "X"
+        delBtn.TextColor3 = Color3.fromRGB(255,100,100)
+        delBtn.Font = Config.FontBold
+        delBtn.TextSize = 11
+        delBtn.AutoButtonColor = false
+        delBtn.Parent = topRow
+        local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(0, 4) dc.Parent = delBtn
+        delBtn.MouseButton1Click:Connect(function()
+            PointsList[id] = nil
+            if WorldMarkers[id] then WorldMarkers[id].part:Destroy() WorldMarkers[id] = nil end
+            SavePoints()
+            RefreshPointsUI()
+        end)
+        local bindToggleBtn = Instance.new("TextButton")
+        bindToggleBtn.Size = UDim2.new(0, 28, 1, 0)
+        bindToggleBtn.Position = UDim2.new(1, -28, 0, 0)
+        bindToggleBtn.BackgroundColor3 = Color3.fromRGB(40,60,40)
+        bindToggleBtn.Text = "👁"
+        bindToggleBtn.TextColor3 = Color3.fromRGB(255,255,255)
+        bindToggleBtn.Font = Config.FontBold
+        bindToggleBtn.TextSize = 12
+        bindToggleBtn.AutoButtonColor = false
+        bindToggleBtn.Parent = topRow
+        local btc = Instance.new("UICorner") btc.CornerRadius = UDim.new(0, 4) btc.Parent = bindToggleBtn
+        bindToggleBtn.MouseButton1Click:Connect(function()
+            point.visible = not (point.visible ~= false)
+            ApplyPointVisibility(id)
+        end)
+        local botRow = Instance.new("Frame")
+        botRow.Size = UDim2.new(1, 0, 0, 22)
+        botRow.Position = UDim2.new(0, 0, 0, 26)
+        botRow.BackgroundTransparency = 1
+        botRow.Parent = row
+        local coordLbl = Instance.new("TextLabel")
+        coordLbl.Size = UDim2.new(1, -10, 1, 0)
+        coordLbl.Position = UDim2.new(0, 5, 0, 0)
+        coordLbl.BackgroundTransparency = 1
+        coordLbl.Text = string.format("x%d  y%d  z%d", math.floor(point.pos.X), math.floor(point.pos.Y), math.floor(point.pos.Z))
+        coordLbl.TextColor3 = Color3.fromRGB(160,160,160)
+        coordLbl.Font = Config.Font
+        coordLbl.TextSize = 10
+        coordLbl.TextXAlignment = Enum.TextXAlignment.Left
+        coordLbl.Parent = botRow
+    end
+end
 
 RefreshFriendsUI()
 RefreshWorldMarkers()
@@ -1924,14 +1905,11 @@ local ThemeSection = CreateSection(ThemeContent, "Accent Color (RGB)")
 function UpdateTheme(newColor)
     Config.AccentColor = newColor
     for _, d in ipairs(ThemeElements) do
-        if d.type == "text" then
-            d.element.TextColor3 = newColor
+        if d.type == "text" then d.element.TextColor3 = newColor
         else
             if d.isActiveOnly then
                 if d.element.BackgroundColor3 ~= Color3.fromRGB(60,60,60) then d.element.BackgroundColor3 = newColor end
-            else
-                d.element.BackgroundColor3 = newColor
-            end
+            else d.element.BackgroundColor3 = newColor end
         end
     end
     for idx, btn in ipairs(TabButtons) do
@@ -1944,39 +1922,25 @@ CreateSlider(ThemeSection, "Red", 0, 255, 190, function(v) UpdateTheme(Color3.fr
 CreateSlider(ThemeSection, "Green", 0, 255, 45, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), v, math.floor(Config.AccentColor.B*255))) end)
 CreateSlider(ThemeSection, "Blue", 0, 255, 45, function(v) UpdateTheme(Color3.fromRGB(math.floor(Config.AccentColor.R*255), math.floor(Config.AccentColor.G*255), v)) end)
 
--- CONFIGURATIONS
+-- CONFIG
 local ConfigSection = CreateSection(ConfigContent, "Config Management")
 local CONFIG_KEYS = {
-    "AimbotEnabled", "AimbotFOV", "AimbotTarget", "TeamCheck", "WallCheck",
-    "HitboxEnabled", "HitboxSize",
-    "SpeedEnabled", "WalkSpeed", "FlyEnabled", "FlySpeed",
-    "NoclipEnabled", "StrafeEnabled", "StrafePower",
-    "BhopEnabled", "WaterWalkEnabled",
-    "InfJumpEnabled", "AntiAFKEnabled", "GodModeEnabled", "AutoInteractEnabled",
-    "FullbrightEnabled", "ESPEnabled", "NoFogEnabled",
-    "FogEnabled", "FogR", "FogG", "FogB", "FogStart", "FogEnd",
-    "StarsEnabled", "StarsRate", "StarsSize", "StarsFallSpeed",
-    "FPSBoostEnabled", "AntiFlingEnabled", "ClickTPEnabled"
+    "ESPEnabled","FullbrightEnabled","NoFogEnabled",
+    "FogEnabled","FogR","FogG","FogB","FogStart","FogEnd",
+    "FPSBoostEnabled","AntiAFKEnabled","NoPlayerCollisionEnabled",
+    "PointColorR","PointColorG","PointColorB",
+    "PredictAimEnabled","PredictAimFOV","PredictAimHitpart","PredictAimSmooth","PredictAimTeamCheck","PredictAimWallCheck","PredictAimBulletSpeed","PredictEnabled",
+    "StrafeEnabled","StrafeSpeed","AutoJumpEnabled",
+    "FlyEnabled","FlySpeed"
 }
 
 local function BuildConfigString()
     local cfg = {
-        version = 6,
+        version = 26,
         timestamp = os.time(),
         features = {},
-        theme = {r = math.floor(Config.AccentColor.R * 255), g = math.floor(Config.AccentColor.G * 255), b = math.floor(Config.AccentColor.B * 255)},
-        watermark = {
-            Visible = HUD_MainFrame.Visible,
-            ShowName = WatermarkState.Name, ShowNickname = WatermarkState.Nickname,
-            ShowFPS = WatermarkState.FPS, ShowPing = WatermarkState.Ping,
-            ShowTPS = WatermarkState.TPS, ShowCoords = WatermarkState.Coords,
-            ShowSpeed = WatermarkState.Speed
-        },
-        stars = {color = {
-            r = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).R * 255),
-            g = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).G * 255),
-            b = math.floor((getgenv().StarsColor or Color3.fromRGB(255,255,255)).B * 255)
-        }},
+        theme = {r = math.floor(Config.AccentColor.R*255), g = math.floor(Config.AccentColor.G*255), b = math.floor(Config.AccentColor.B*255)},
+        watermark = {Visible = HUD_MainFrame.Visible, ShowName = WatermarkState.Name, ShowNickname = WatermarkState.Nickname, ShowFPS = WatermarkState.FPS, ShowPing = WatermarkState.Ping, ShowTPS = WatermarkState.TPS, ShowCoords = WatermarkState.Coords, ShowSpeed = WatermarkState.Speed},
         friends = FriendList,
         points = {},
         keybinds = {}
@@ -1996,8 +1960,7 @@ local function BuildConfigString()
 end
 
 CreateButton(ConfigSection, "Copy Config to Clipboard", function()
-    local s = BuildConfigString()
-    pcall(function() setclipboard(s) end)
+    pcall(function() setclipboard(BuildConfigString()) end)
 end)
 
 local LoadBoxFrame = Instance.new("Frame")
@@ -2007,10 +1970,8 @@ LoadBoxFrame.Parent = ConfigSection
 local lbc = Instance.new("UICorner") lbc.CornerRadius = UDim.new(0, 6) lbc.Parent = LoadBoxFrame
 local lbs = Instance.new("UIStroke") lbs.Color = Color3.fromRGB(45,45,45) lbs.Thickness = 1 lbs.Parent = LoadBoxFrame
 local lbs_pad = Instance.new("UIPadding")
-lbs_pad.PaddingLeft = UDim.new(0, 6)
-lbs_pad.PaddingRight = UDim.new(0, 6)
-lbs_pad.PaddingTop = UDim.new(0, 4)
-lbs_pad.PaddingBottom = UDim.new(0, 4)
+lbs_pad.PaddingLeft = UDim.new(0, 6) lbs_pad.PaddingRight = UDim.new(0, 6)
+lbs_pad.PaddingTop = UDim.new(0, 4) lbs_pad.PaddingBottom = UDim.new(0, 4)
 lbs_pad.Parent = LoadBoxFrame
 local LoadBox = Instance.new("TextBox")
 LoadBox.Size = UDim2.new(1, 0, 1, 0)
@@ -2033,7 +1994,6 @@ CreateButton(ConfigSection, "Load Config from Text", function()
     if not txt or txt == "" then return end
     local ok, cfg = pcall(function() return HttpService:JSONDecode(txt) end)
     if not ok or type(cfg) ~= "table" then return end
-
     if cfg.features then for k, v in pairs(cfg.features) do getgenv()[k] = v end end
     if cfg.theme then UpdateTheme(Color3.fromRGB(cfg.theme.r or 190, cfg.theme.g or 45, cfg.theme.b or 45)) end
     if cfg.watermark then
@@ -2045,14 +2005,6 @@ CreateButton(ConfigSection, "Load Config from Text", function()
         WatermarkState.Coords = cfg.watermark.ShowCoords ~= false
         WatermarkState.Speed = cfg.watermark.ShowSpeed ~= false
         ApplyWatermarkState()
-    end
-    if cfg.stars and cfg.stars.color then
-        getgenv().StarsColor = Color3.fromRGB(cfg.stars.color.r or 255, cfg.stars.color.g or 255, cfg.stars.color.b or 255)
-        for _, s in ipairs(WorldStarsFolder:GetChildren()) do
-            if s:IsA("BasePart") then s.Color = getgenv().StarsColor end
-            local l = s:FindFirstChildOfClass("PointLight")
-            if l then l.Color = getgenv().StarsColor end
-        end
     end
     if getgenv().FogEnabled then
         if getgenv().OriginalFogColor == nil then
@@ -2072,32 +2024,18 @@ CreateButton(ConfigSection, "Load Config from Text", function()
                 if keyCode then
                     data.key = keyCode
                     data.label.Text = "[" .. keyName .. "]"
-                    data.label.TextColor3 = Color3.fromRGB(120, 220, 120)
+                    data.label.TextColor3 = Color3.fromRGB(120,220,120)
                 end
             end
         end
         RefreshKeybindsHUD()
     end
-    if cfg.friends then
-        FriendList = cfg.friends
-        SaveFriends()
-        RefreshFriendsUI()
-    end
+    if cfg.friends then FriendList = cfg.friends SaveFriends() RefreshFriendsUI() end
     if cfg.points then
-        for _, m in pairs(WorldMarkers) do
-            m.spinConn:Disconnect()
-            m.model:Destroy()
-        end
+        for _, m in pairs(WorldMarkers) do m.part:Destroy() end
         WorldMarkers = {}
         for _, df in pairs(MiniMapPointDots) do df:Destroy() end
         MiniMapPointDots = {}
-        for _, kb in pairs(KeybindData) do
-            if kb.name and kb.name:sub(1, 6) == "POINT_" then
-                kb.key = nil
-                kb.label.Text = "[Bind]"
-                kb.label.TextColor3 = Color3.fromRGB(160, 160, 160)
-            end
-        end
         PointsList = {}
         for _, p in ipairs(cfg.points) do
             PointIdCounter = PointIdCounter + 1
@@ -2106,7 +2044,9 @@ CreateButton(ConfigSection, "Load Config from Text", function()
         SavePoints()
         RefreshWorldMarkers()
         RefreshPointsUI()
+        UpdatePointColor()
     end
+    UpdatePointColor()
 end)
 
 -- DRAGGABLE
@@ -2114,9 +2054,7 @@ local function makeDraggable(frame, dragArea)
     local dragging, dragInput, dragStart, startPos
     dragArea.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
+            dragging = true dragStart = input.Position startPos = frame.Position
         end
     end)
     dragArea.InputChanged:Connect(function(input)
@@ -2132,7 +2070,6 @@ local function makeDraggable(frame, dragArea)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
 end
-
 makeDraggable(HUD_MainFrame, HUD_MainFrame)
 makeDraggable(Menu_MainFrame, Header)
 makeDraggable(TargetFrame, TargetName)
@@ -2145,11 +2082,7 @@ local lastTime = tick()
 local currentFps = 0
 RunService.RenderStepped:Connect(function()
     frames = frames + 1
-    if tick() - lastTime >= 1 then
-        currentFps = frames
-        frames = 0
-        lastTime = tick()
-    end
+    if tick() - lastTime >= 1 then currentFps = frames frames = 0 lastTime = tick() end
     local ping = 0
     pcall(function() ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) end)
     local tps = math.floor(workspace:GetRealPhysicsFPS() * 10) / 10
@@ -2171,7 +2104,6 @@ end)
 -- TARGET HUD LOOP
 local targetAccum = 0
 local targetCurrentState = false
-
 local function FadeTargetHUD(show)
     if show then
         TargetFrame.Visible = true
@@ -2188,48 +2120,33 @@ local function FadeTargetHUD(show)
         Tween(TargetHPBarBg, 0.25, {BackgroundTransparency = 1})
         Tween(TargetHPBar, 0.25, {BackgroundTransparency = 1})
         Tween(TargetHPText, 0.25, {TextTransparency = 1})
-        task.delay(0.3, function()
-            if not targetCurrentState then TargetFrame.Visible = false end
-        end)
+        task.delay(0.3, function() if not targetCurrentState then TargetFrame.Visible = false end end)
     end
 end
 
 RunService.RenderStepped:Connect(function(dt)
     if not getgenv().TargetHUDEnabled then
-        if targetCurrentState then
-            targetCurrentState = false
-            FadeTargetHUD(false)
-        end
+        if targetCurrentState then targetCurrentState = false FadeTargetHUD(false) end
         return
     end
     targetAccum = targetAccum + dt
     if targetAccum < 0.05 then return end
     targetAccum = 0
-
     local cam = workspace.CurrentCamera
     local vp = cam.ViewportSize
     local center = Vector2.new(vp.X / 2, vp.Y / 2)
     local closest, closestDist = nil, math.huge
-
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
             local sp, on = cam:WorldToViewportPoint(p.Character.Head.Position)
             if on then
                 local d = (Vector2.new(sp.X, sp.Y) - center).Magnitude
-                if d < closestDist and d < 250 then
-                    closestDist = d
-                    closest = p
-                end
+                if d < closestDist and d < 250 then closestDist = d closest = p end
             end
         end
     end
-
     local hasTarget = closest ~= nil
-    if hasTarget ~= targetCurrentState then
-        targetCurrentState = hasTarget
-        FadeTargetHUD(hasTarget)
-    end
-
+    if hasTarget ~= targetCurrentState then targetCurrentState = hasTarget FadeTargetHUD(hasTarget) end
     if closest then
         local hum = closest.Character.Humanoid
         TargetName.Text = closest.Name
@@ -2257,32 +2174,27 @@ RunService.RenderStepped:Connect(function(dt)
     local lookV = cam.CFrame.LookVector
     local yaw = math.atan2(lookV.X, -lookV.Z)
     local rotDeg = -math.deg(yaw)
-    MiniMapRotator.Rotation = rotDeg
     local rotRad = math.rad(rotDeg)
     local cosR, sinR = math.cos(rotRad), math.sin(rotRad)
     local baseX = math.floor(myPos.X / GRID_SPACING) * GRID_SPACING
     local baseZ = math.floor(myPos.Z / GRID_SPACING) * GRID_SPACING
-    local lineIdx = 1
-    local longSide = math.max(w, h) * 4
-    for i = -7, 7 do
-        local data = MiniMapGridLines[lineIdx]
-        local worldX = baseX + i * GRID_SPACING
+    local halfW_ = w / 2
+    local halfH_ = h / 2
+    for _, data in ipairs(MiniMapGridDots) do
+        local worldX = baseX + data.i * GRID_SPACING
+        local worldZ = baseZ + data.j * GRID_SPACING
         local ux = (worldX - myPos.X) * scale
-        data.frame.Size = UDim2.new(0, 1, 0, longSide)
-        data.frame.Position = UDim2.new(0.5, ux, 0.5, 0)
-        lineIdx = lineIdx + 1
-    end
-    for i = -7, 7 do
-        local data = MiniMapGridLines[lineIdx]
-        local worldZ = baseZ + i * GRID_SPACING
         local uy = (worldZ - myPos.Z) * scale
-        data.frame.Size = UDim2.new(0, longSide, 0, 1)
-        data.frame.Position = UDim2.new(0.5, 0, 0.5, uy)
-        lineIdx = lineIdx + 1
+        local sx = ux * cosR - uy * sinR
+        local sy = ux * sinR + uy * cosR
+        if math.abs(sx) > halfW_ + 4 or math.abs(sy) > halfH_ + 4 then
+            data.frame.Visible = false
+        else
+            data.frame.Visible = true
+            data.frame.Position = UDim2.new(0.5, sx, 0.5, sy)
+        end
     end
-    local halfW = w / 2
-    local halfH = h / 2
-    local pad = 10
+    local pad = 8
     local seen = {}
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
@@ -2292,22 +2204,22 @@ RunService.RenderStepped:Connect(function(dt)
             local ux, uy = rel.X * scale, rel.Z * scale
             local sx = ux * cosR - uy * sinR
             local sy = ux * sinR + uy * cosR
-            local clampedX = math.clamp(sx, -halfW + pad, halfW - pad)
-            local clampedY = math.clamp(sy, -halfH + pad, halfH - pad)
-            local isOut = (sx ~= clampedX) or (sy ~= clampedY)
+            local isOut = (math.abs(sx) > halfW_ - pad) or (math.abs(sy) > halfH_ - pad)
+            local clampedX = math.clamp(sx, -halfW_ + pad, halfW_ - pad)
+            local clampedY = math.clamp(sy, -halfH_ + pad, halfH_ - pad)
             local isFr = IsFriend(p)
             local dotData = MiniMapDots[p]
             if not dotData then
                 local df = Instance.new("Frame")
                 df.Size = UDim2.new(0, 8, 0, 8)
-                df.BackgroundColor3 = isFr and Config.FriendColor or Color3.fromRGB(255, 60, 60)
+                df.BackgroundColor3 = isFr and Config.FriendColor or Color3.fromRGB(255,60,60)
                 df.ZIndex = 6
                 df.Parent = MiniMapArea
                 local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(1, 0) dc.Parent = df
                 local lbl = Instance.new("TextLabel")
                 lbl.Size = UDim2.new(0, 60, 0, 12)
                 lbl.BackgroundTransparency = 1
-                lbl.TextColor3 = Color3.fromRGB(255, 200, 200)
+                lbl.TextColor3 = Color3.fromRGB(255,200,200)
                 lbl.Font = Config.Font
                 lbl.TextSize = 10
                 lbl.TextXAlignment = Enum.TextXAlignment.Center
@@ -2317,15 +2229,13 @@ RunService.RenderStepped:Connect(function(dt)
                 dotData = {frame = df, label = lbl}
                 MiniMapDots[p] = dotData
             end
-            dotData.frame.BackgroundColor3 = isFr and Config.FriendColor or Color3.fromRGB(255, 60, 60)
+            dotData.frame.BackgroundColor3 = isFr and Config.FriendColor or Color3.fromRGB(255,60,60)
             dotData.frame.Position = UDim2.new(0.5, clampedX - 4, 0.5, clampedY - 4)
             if isOut then
                 dotData.label.Visible = true
                 dotData.label.Text = tostring(math.floor(dist))
                 dotData.label.Position = UDim2.new(0.5, clampedX - 30, 0.5, clampedY + 6)
-            else
-                dotData.label.Visible = false
-            end
+            else dotData.label.Visible = false end
         end
     end
     for p, data in pairs(MiniMapDots) do
@@ -2338,19 +2248,20 @@ RunService.RenderStepped:Connect(function(dt)
         local ux, uy = rel.X * scale, rel.Z * scale
         local sx = ux * cosR - uy * sinR
         local sy = ux * sinR + uy * cosR
-        local clampedX = math.clamp(sx, -halfW + pad, halfW - pad)
-        local clampedY = math.clamp(sy, -halfH + pad, halfH - pad)
+        local clampedX = math.clamp(sx, -halfW_ + pad, halfW_ - pad)
+        local clampedY = math.clamp(sy, -halfH_ + pad, halfH_ - pad)
         local df = MiniMapPointDots[id]
         if not df then
             df = Instance.new("Frame")
             df.Size = UDim2.new(0, 8, 0, 8)
-            df.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            df.BackgroundColor3 = GetPointColor()
             df.ZIndex = 5
             df.Parent = MiniMapArea
             local dc = Instance.new("UICorner") dc.CornerRadius = UDim.new(1, 0) dc.Parent = df
             MiniMapPointDots[id] = df
         end
         df.Visible = point.visible ~= false
+        df.BackgroundColor3 = GetPointColor()
         df.Position = UDim2.new(0.5, clampedX - 4, 0.5, clampedY - 4)
     end
     for id, df in pairs(MiniMapPointDots) do
@@ -2358,25 +2269,24 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- WORLD POINT DISTANCE UPDATE
+-- POINT DISTANCE
 RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     if not myChar or not myChar:FindFirstChild("HumanoidRootPart") then return end
     local myPos = myChar.HumanoidRootPart.Position
     for id, point in pairs(PointsList) do
         local m = WorldMarkers[id]
-        if m then m.distLbl.Text = tostring(math.floor((point.pos - myPos).Magnitude)) .. " studs" end
+        if m and m.distLbl then
+            m.distLbl.Text = tostring(math.floor((point.pos - myPos).Magnitude)) .. "m"
+        end
     end
 end)
 
--- RSHIFT
+-- MENU KEY (K)
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        if Menu_MainFrame.Visible then
-            CloseMenu()
-        else
-            OpenMenu()
-        end
+    if UserInputService:GetFocusedTextBox() then return end
+    if input.KeyCode == Enum.KeyCode.K then
+        if Menu_MainFrame.Visible then CloseMenu() else OpenMenu() end
     end
 end)
